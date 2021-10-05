@@ -7,4 +7,5 @@
 *.dylib
 *.test
 *.out
-coreconfig.json
+core
+config.json
