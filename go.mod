@@ -1,4 +1,4 @@
-module awesomeProject
+module github.com/utking/hackernews_digest_go
 
 go 1.17
 

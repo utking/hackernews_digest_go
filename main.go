@@ -1,7 +1,7 @@
 package main
 
 import (
-	newsFetcher "awesomeProject/fetcher"
+	newsFetcher "github.com/utking/hackernews_digest_go/fetcher"
 	"log"
 )
 
