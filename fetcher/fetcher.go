@@ -15,25 +15,25 @@ import (
 
 // Data Types
 
-type PrefetchResults 	[]int64
-type DigestItem			struct {
-	id         	int64
-	createdAt 	int64
-	newsTitle 	string
-	newsUrl   	string
+type PrefetchResults []int64
+type DigestItem struct {
+	id        int64
+	createdAt int64
+	newsTitle string
+	newsUrl   string
 }
 
-type JsonNewsItem 		struct {
-	Id 		int64	`json:"id"`
-	Time 	int64	`json:"time"`
-	Title	string	`json:"title,omitempty"`
-	Url		string	`json:"url,omitempty"`
+type JsonNewsItem struct {
+	Id    int64  `json:"id"`
+	Time  int64  `json:"time"`
+	Title string `json:"title,omitempty"`
+	Url   string `json:"url,omitempty"`
 }
-type Digest				[]DigestItem
-type FetchError 		struct {}
-type Results 			struct {
-	NewItems	uint
-	Filters 	uint
+type Digest []DigestItem
+type FetchError struct{}
+type Results struct {
+	NewItems uint
+	Filters  uint
 }
 
 // Methods
@@ -44,8 +44,8 @@ func (fe *FetchError) Error() string {
 
 type Fetcher struct {
 	Settings Configuration
-	Db		 *sql.DB
-	filters	 []string
+	Db       *sql.DB
+	filters  []string
 }
 
 func (f *Fetcher) purgeOld() error {
@@ -173,7 +173,7 @@ func (f *Fetcher) filter(prefetched *[]int64) ([]DigestItem, error) {
 			}
 			newItems = append(newItems, digestItem)
 			for _, filterItem := range f.filters {
-				hit, _ := regexp.MatchString("(?i)" + filterItem, newItem.Title)
+				hit, _ := regexp.MatchString("(?i)"+filterItem, newItem.Title)
 				if hit {
 					digestItems = append(digestItems, digestItem)
 					break
@@ -230,7 +230,7 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
           </body>
         </html>%s`, digestItemsHtml, time.Now().Format("02 Jan 06 15:04 MST"), "\n\n")
 
-	msg := subject + mime + textHeader + digestItemsText + 	"\n\n" + htmlHeader + digestHtml + "--boundary-string--"
+	msg := subject + mime + textHeader + digestItemsText + "\n\n" + htmlHeader + digestHtml + "--boundary-string--"
 
 	c, err := smtp.Dial(fmt.Sprintf("%s:%d", f.Settings.Smtp.Host, f.Settings.Smtp.Port))
 	if err != nil {
@@ -279,7 +279,13 @@ func (f *Fetcher) Run() Results {
 	}
 	results.NewItems = uint(len(digest))
 	if len(digest) > 0 {
-		f.SendEmail(&digest)
+		if f.Settings.EmailTo != "" {
+			f.SendEmail(&digest)
+		} else {
+			for _, digestItem := range digest {
+				fmt.Printf("* %s - %s\n", digestItem.newsTitle, digestItem.newsUrl)
+			}
+		}
 	}
 	return results
 }
