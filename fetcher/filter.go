@@ -1,6 +1,6 @@
 package fetcher
 
 type FilterItem struct {
-	Title	string
-	Value	string
+	Title string
+	Value string
 }

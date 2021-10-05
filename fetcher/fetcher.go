@@ -154,7 +154,7 @@ func (f *Fetcher) filter(prefetched *[]int64) ([]DigestItem, error) {
 		// Fetch the item
 		newItem, err := f.fetchOne(fetchId)
 		if err != nil {
-			log.Println("FETCH_ONE", err)
+			log.Println("FETCH_ONE: ", err)
 		}
 		if newItem.Url == "" {
 			//fmt.Println("No URL", newItem)
@@ -184,12 +184,12 @@ func (f *Fetcher) filter(prefetched *[]int64) ([]DigestItem, error) {
 	if len(newItems) > 0 {
 		stmt, err := f.Db.Prepare("INSERT INTO news_items VALUES (?,?,?,?)")
 		if err != nil {
-			log.Fatal("PREPARE:", err)
+			log.Fatal("PREPARE: ", err)
 		} else {
 			for _, newItem := range newItems {
 				_, err := stmt.Exec(newItem.id, newItem.createdAt, newItem.newsTitle, newItem.newsUrl)
 				if err != nil {
-					log.Fatal("INSERT:", err)
+					log.Fatal("INSERT: ", err)
 				}
 			}
 		}
@@ -234,29 +234,29 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 
 	c, err := smtp.Dial(fmt.Sprintf("%s:%d", f.Settings.Smtp.Host, f.Settings.Smtp.Port))
 	if err != nil {
-		log.Fatal("EMAIL", err)
+		log.Fatal("EMAIL: ", err)
 	}
 	if err := c.Mail(f.Settings.Smtp.From); err != nil {
-		log.Fatal("EMAIL_SENDER")
+		log.Fatal("EMAIL_SENDER: ", err)
 	}
 	if err := c.Rcpt(f.Settings.EmailTo); err != nil {
-		log.Fatal("EMAIL_RECEIVER")
+		log.Fatal("EMAIL_RECEIVER: ", err)
 	}
 	wc, err := c.Data()
 	if err != nil {
-		log.Fatal("EMAIL_START_CONTENT")
+		log.Fatal("EMAIL_START_CONTENT: ", err)
 	}
 	_, err = fmt.Fprintf(wc, msg)
 	if err != nil {
-		log.Fatal("EMAIL_SET_CONTENT")
+		log.Fatal("EMAIL_SET_CONTENT: ", err)
 	}
 	err = wc.Close()
 	if err != nil {
-		log.Fatal("EMAIL_CLOSE_CONTENT")
+		log.Fatal("EMAIL_CLOSE_CONTENT: ", err)
 	}
 	err = c.Quit()
 	if err != nil {
-		log.Fatal("EMAIL_QUIT")
+		log.Fatal("EMAIL_QUIT: ", err)
 	}
 }
 
@@ -265,17 +265,17 @@ func (f *Fetcher) Run() Results {
 	results := Results{NewItems: 0, Filters: uint(len(f.filters))}
 	err := f.prepareDb()
 	if err != nil {
-		log.Fatal("PREPARE DB", err)
+		log.Fatal("PREPARE DB: ", err)
 	}
 	defer f.Db.Close()
 	var prefetchedItems *[]int64
 	prefetchedItems, err = f.prefetch()
 	if err != nil {
-		log.Fatal("PREFETCH", err)
+		log.Fatal("PREFETCH: ", err)
 	}
 	digest, err := f.filter(prefetchedItems)
 	if err != nil {
-		log.Fatal("FILTER", err)
+		log.Fatal("FILTER: ", err)
 	}
 	results.NewItems = uint(len(digest))
 	if len(digest) > 0 {
