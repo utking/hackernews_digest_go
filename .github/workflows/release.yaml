@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CGO_ENABLED: 1
+      CC_FOR_TARGET: gcc-aarch64-linux-gnu
     steps:
     - uses: actions/checkout@v2
     - uses: wangyoucao577/go-release-action@v1.22
