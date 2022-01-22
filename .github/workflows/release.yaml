@@ -15,6 +15,7 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: linux
         goarch: amd64
+        overwrite: TRUE
   release-linux-arm64:
     name: release linux/arm64
     runs-on: ubuntu-latest
@@ -25,3 +26,4 @@ jobs:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: linux
         goarch: arm64
+        overwrite: TRUE
