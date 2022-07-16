@@ -8,5 +8,5 @@ import (
 func main() {
 	fetcher := newsFetcher.Fetcher{Settings: newsFetcher.GetConfig()}
 	results := fetcher.Run()
-	fmt.Printf("Filters: %d\nFetched new items: %d", results.Filters, results.NewItems)
+	fmt.Printf("Filters: %d\nFetched new items: %d\n", results.Filters, results.NewItems)
 }

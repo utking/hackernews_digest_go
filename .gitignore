@@ -9,3 +9,4 @@
 *.out
 core
 config.json
+hackernews_digest_go

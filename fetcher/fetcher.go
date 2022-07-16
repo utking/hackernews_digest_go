@@ -78,7 +78,6 @@ func (f *Fetcher) prepareDb() error {
 	if err != nil {
 		return err
 	}
-	//println("DB initialized")
 	return nil
 }
 
@@ -108,16 +107,13 @@ func (f *Fetcher) prefetch() (*[]int64, error) {
 
 func (f *Fetcher) fetchOne(id int64) (JsonNewsItem, error) {
 	var result JsonNewsItem
-	//fmt.Println("Fetching", id)
 	prefetchUrl := fmt.Sprintf("%s/item/%d.json", f.Settings.ApiBaseUrl, id)
-	//fmt.Println(prefetchUrl)
 	resp, err := http.Get(prefetchUrl)
 	if err != nil {
 		return result, err
 	}
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&result)
-	//fmt.Printf("%#v\n", result)
 	if err != nil {
 		return result, err
 	}
@@ -157,7 +153,6 @@ func (f *Fetcher) filter(prefetched *[]int64) ([]DigestItem, error) {
 			log.Println("FETCH_ONE: ", err)
 		}
 		if newItem.Url == "" {
-			//fmt.Println("No URL", newItem)
 			newItems = append(newItems, DigestItem{
 				id:        newItem.Id,
 				createdAt: newItem.Time,
