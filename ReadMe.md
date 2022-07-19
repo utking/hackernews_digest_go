@@ -7,3 +7,5 @@
 Copy `config.example.json` to `config.json` and adjust what you think should be adjusted.
 
 Set "EmailTo": null if you don't want to send an email but simply print out the digest to the console.
+
+Use the only possible argumenbt (`-r` ) to reverse the filtering

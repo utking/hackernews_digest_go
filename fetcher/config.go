@@ -1,8 +1,9 @@
 package fetcher
 
 import (
-	"github.com/tkanos/gonfig"
 	"log"
+	
+	"github.com/tkanos/gonfig"
 )
 
 const configFile = "./config.json"
@@ -15,6 +16,7 @@ type SmtpConfig struct {
 	Password string
 	UseTls   bool
 	UseSsl   bool
+	Subject  string
 }
 
 type Configuration struct {
