@@ -272,7 +272,7 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 	mime := EMAIL_MIME_HEADERS
 	textHeader := EMAIL_TEXT_HEADER
 	htmlHeader := EMAIL_HTML_HEADER
-	digestHtml := fmt.Sprintf(DIGEST_HTML_TEMPLATE, digestItemsHtml, time.Now().Format("02 Jan 06 15:04 MST"), DBL_CRLF)
+	digestHtml := fmt.Sprintf(DIGEST_HTML_TEMPLATE, digestItemsHtml, time.Now().Format(time.RFC1123Z), DBL_CRLF)
 
 	msg := messageStart + mime + textHeader + digestItemsText + DBL_CRLF + htmlHeader + digestHtml + BOUNDARY_STRING
 

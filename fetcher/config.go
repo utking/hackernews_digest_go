@@ -2,11 +2,12 @@ package fetcher
 
 import (
 	"log"
-	
+	"os"
+
 	"github.com/tkanos/gonfig"
 )
 
-const configFile = "./config.json"
+const defaultConfigFile = "./config.json"
 
 type SmtpConfig struct {
 	Host     string
@@ -29,6 +30,11 @@ type Configuration struct {
 }
 
 func GetConfig() Configuration {
+	configFile := os.Getenv("CONFIG_FILENAME")
+	if configFile == "" {
+		configFile = defaultConfigFile
+	}
+
 	config := Configuration{}
 	err := gonfig.GetConf(configFile, &config)
 	if err != nil {
