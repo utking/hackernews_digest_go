@@ -13,6 +13,8 @@ type SmtpConfig struct {
 	From     string
 	Username string
 	Password string
+	UseTls   bool
+	UseSsl   bool
 }
 
 type Configuration struct {

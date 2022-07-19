@@ -30,6 +30,8 @@
     "Port": 1025,
     "From": "HackerNews Digest <hackernews-no-reply@example.com>",
     "Username": null,
-    "Password": null
+    "Password": null,
+    "UseTls": true,
+    "UseSsl": false
   }
 }

@@ -1,6 +1,7 @@
 package fetcher
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -231,6 +232,21 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 	if err != nil {
 		log.Fatal("EMAIL: ", err)
 	}
+
+	auth := smtp.PlainAuth("", f.Settings.Smtp.Username, f.Settings.Smtp.Password, f.Settings.Smtp.Host)
+
+	if f.Settings.Smtp.UseTls {
+		tlsconfig := &tls.Config{
+			InsecureSkipVerify: true,
+			ServerName:         f.Settings.Smtp.From,
+		}
+		c.StartTLS(tlsconfig)
+	}
+
+	if err = c.Auth(auth); err != nil {
+		log.Panic(err)
+	}
+
 	if err := c.Mail(f.Settings.Smtp.From); err != nil {
 		log.Fatal("EMAIL_SENDER: ", err)
 	}
