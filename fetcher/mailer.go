@@ -37,6 +37,7 @@ type DigestMailer struct {
 	smtpConfig SmtpConfig
 }
 
+// Prepare and send an email with the list of the provided news items
 func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo string) {
 	if mailer.smtpConfig.Host == "" {
 		log.Println("SMTP Host is empty. Skipping sending the Email")

@@ -1,7 +1,6 @@
 package fetcher
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,45 +11,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// Data Types
-
-type PrefetchResults []int64
-type DigestItem struct {
-	id        int64
-	createdAt int64
-	newsTitle string
-	newsUrl   string
-}
-
-type JsonNewsItem struct {
-	Id    int64  `json:"id"`
-	Time  int64  `json:"time"`
-	Title string `json:"title,omitempty"`
-	Url   string `json:"url,omitempty"`
-}
-type Digest []DigestItem
-type FetchError struct{}
-type Results struct {
-	NewItems uint
-	Filters  uint
-}
-
 // Constants
 
-const SQL_DRIVER = "sqlite3"
-const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS news_items
-(
-	id INTEGER PRIMARY KEY,
-	created_at TEXT NOT NULL,
-	news_title TEXT NOT NULL,
-	news_url  TEXT NOT NULL
-)`
-const CRLF = "\r\n"
-const DBL_CRLF = CRLF + CRLF
 const REGEX_CASE_INSENSITIVE = "(?i)"
-const VACUUM = "VACUUM"
-const SELECT_ITEMS = "SELECT id FROM news_items"
-const INSERT_ITEM = "INSERT INTO news_items VALUES (?,?,?,?)"
 
 // Methods
 
@@ -59,39 +22,12 @@ func (fe *FetchError) Error() string {
 }
 
 type Fetcher struct {
-	Settings Configuration
-	Db       *sql.DB
-	filters  []string
+	Settings   Configuration
+	repository DataRepository
+	filters    []string
 }
 
-func (f *Fetcher) purgeOld() error {
-	purgeStmt := `DELETE FROM news_items WHERE 
-			date(created_at, "unixepoch", "localtime") < date("now", "-#{f.Settings.PurgeAfterDays} days")`
-	_, err := f.Db.Exec(purgeStmt)
-	if err != nil {
-		return err
-	}
-	_, err = f.Db.Exec(VACUUM)
-	return err
-}
-
-func (f *Fetcher) prepareDb() error {
-	var err error
-	f.Db, err = sql.Open(SQL_DRIVER, f.Settings.DatabaseFile)
-	if err != nil {
-		return err
-	}
-	_, err = f.Db.Exec(CREATE_TABLE)
-	if err != nil {
-		return err
-	}
-	err = f.purgeOld()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
+// Parse the filters configuration and return it as a flat array of strings
 func (f *Fetcher) prepareFilters() []string {
 	var resultFilters []string
 	for _, filter := range f.Settings.Filters {
@@ -101,6 +37,7 @@ func (f *Fetcher) prepareFilters() []string {
 	return resultFilters
 }
 
+// Get top stories' IDs
 func (f *Fetcher) prefetch() (*[]int64, error) {
 	result := make([]int64, 0)
 	prefetchUrl := fmt.Sprintf("%s/topstories.json", f.Settings.ApiBaseUrl)
@@ -116,6 +53,7 @@ func (f *Fetcher) prefetch() (*[]int64, error) {
 	return &result, nil
 }
 
+// Fetch one news item as a JSON object
 func (f *Fetcher) fetchOne(id int64) (JsonNewsItem, error) {
 	var result JsonNewsItem
 	prefetchUrl := fmt.Sprintf("%s/item/%d.json", f.Settings.ApiBaseUrl, id)
@@ -131,25 +69,17 @@ func (f *Fetcher) fetchOne(id int64) (JsonNewsItem, error) {
 	return result, nil
 }
 
+// Load IDs for news items that are already in the repository. For those prefetched IDs
+// those that are not in the repository yet, fetch them one by one and run against
+// the set of filters. For the `reverse`'d filters, the news item must be in none of them.
 func (f *Fetcher) filter(prefetched *[]int64, reverse bool) ([]DigestItem, error) {
 	digestItems := make([]DigestItem, 0)
-	existingIDs := make(map[int64]interface{}, 0)
 	newItems := make([]DigestItem, 0)
-	anyFilterHit := false
 
 	// Fetch existing items from the DB
-	rows, err := f.Db.Query(SELECT_ITEMS)
+	existingIDs, err := f.repository.GetExistingIDs()
 	if err != nil {
 		return Digest{}, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var curId int64
-		err = rows.Scan(&curId)
-		if err != nil {
-			return Digest{}, err
-		}
-		existingIDs[curId] = 0
 	}
 	// Fetch news items which do not exist in the DB
 	for _, fetchId := range *prefetched {
@@ -180,52 +110,52 @@ func (f *Fetcher) filter(prefetched *[]int64, reverse bool) ([]DigestItem, error
 			}
 			newItems = append(newItems, digestItem)
 
-			if reverse {
-				anyFilterHit = false
-				for _, filterItem := range f.filters {
-					hit, _ := regexp.MatchString(REGEX_CASE_INSENSITIVE+filterItem, newItem.Title)
-					if hit {
-						anyFilterHit = true
-						break
-					}
-				}
-				if !anyFilterHit {
-					digestItems = append(digestItems, digestItem)
-				}
-
-			} else {
-				for _, filterItem := range f.filters {
-					hit, _ := regexp.MatchString(REGEX_CASE_INSENSITIVE+filterItem, newItem.Title)
-					if hit {
-						digestItems = append(digestItems, digestItem)
-						break
-					}
-				}
+			if f.RunFilter(&newItem, reverse) {
+				digestItems = append(digestItems, digestItem)
 			}
 		}
 	}
-
+	// Add newly fetched items into the repository
 	if len(newItems) > 0 {
-		stmt, err := f.Db.Prepare(INSERT_ITEM)
-		if err != nil {
-			log.Fatal("PREPARE: ", err)
-		} else {
-			for _, newItem := range newItems {
-				_, err := stmt.Exec(newItem.id, newItem.createdAt, newItem.newsTitle, newItem.newsUrl)
-				if err != nil {
-					log.Fatal("INSERT: ", err)
-				}
-			}
-		}
+		f.repository.UpdateItems(newItems)
 	}
+
 	return digestItems, nil
 }
 
+// Run a news item against all the configured filters
+func (f *Fetcher) RunFilter(newItem *JsonNewsItem, reverse bool) bool {
+	if reverse {
+		anyFilterHit := false
+		for _, filterItem := range f.filters {
+			hit, _ := regexp.MatchString(REGEX_CASE_INSENSITIVE+filterItem, newItem.Title)
+			if hit {
+				anyFilterHit = true
+				break
+			}
+		}
+		if !anyFilterHit {
+			return true
+		}
+
+	} else {
+		for _, filterItem := range f.filters {
+			hit, _ := regexp.MatchString(REGEX_CASE_INSENSITIVE+filterItem, newItem.Title)
+			if hit {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Compile an email from the provided news list and send it
 func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 	mailer := DigestMailer{smtpConfig: f.Settings.Smtp}
 	mailer.SendEmail(digest, f.Settings.EmailTo)
 }
 
+// The main runner function
 func (f *Fetcher) Run(reverseFilters ...bool) Results {
 	reverse := false
 	if len(reverseFilters) > 0 {
@@ -233,14 +163,11 @@ func (f *Fetcher) Run(reverseFilters ...bool) Results {
 	}
 
 	f.filters = f.prepareFilters()
-	results := Results{NewItems: 0, Filters: uint(len(f.filters))}
-	err := f.prepareDb()
-	if err != nil {
-		log.Fatal("PREPARE DB: ", err)
-	}
-	defer f.Db.Close()
-	var prefetchedItems *[]int64
-	prefetchedItems, err = f.prefetch()
+	f.repository = DataRepository{dbConfig: f.Settings.DatabaseFile, purgeAfter: f.Settings.PurgeAfterDays}
+	f.repository.Init()
+	defer f.repository.Close()
+
+	prefetchedItems, err := f.prefetch()
 	if err != nil {
 		log.Fatal("PREFETCH: ", err)
 	}
@@ -248,7 +175,10 @@ func (f *Fetcher) Run(reverseFilters ...bool) Results {
 	if err != nil {
 		log.Fatal("FILTER: ", err)
 	}
-	results.NewItems = uint(len(digest))
+	results := Results{
+		NewItems: uint(len(digest)),
+		Filters: uint(len(f.filters)),
+	}
 	if len(digest) > 0 {
 		if f.Settings.EmailTo != "" {
 			f.SendEmail(&digest)
