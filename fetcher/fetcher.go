@@ -156,12 +156,7 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 }
 
 // The main runner function
-func (f *Fetcher) Run(reverseFilters ...bool) Results {
-	reverse := false
-	if len(reverseFilters) > 0 {
-		reverse = reverseFilters[0]
-	}
-
+func (f *Fetcher) Run(reverse bool) Results {
 	f.filters = f.prepareFilters()
 	f.repository = DataRepository{dbConfig: f.Settings.DatabaseFile, purgeAfter: f.Settings.PurgeAfterDays}
 	f.repository.Init()
