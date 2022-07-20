@@ -2,6 +2,7 @@
   "ApiBaseUrl": "https://hacker-news.firebaseio.com/v0",
   "DatabaseFile": "./hackernews_db.sqlite",
   "PurgeAfterDays": 30,
+  "ReverseFilters": false,
   "Filters": [
     {"title": "JavaScript", "value": "\\bjs\\b,(ecma|java).*script,\\bnode(\\.?js)?\\b,\\bnpm\\b"},
     {"title": "Covid", "value": "\\bcovid,\\bdelta\\b,vaccin"},

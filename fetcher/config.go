@@ -27,6 +27,7 @@ type Configuration struct {
 	Filters        []FilterItem
 	EmailTo        string
 	Smtp           SmtpConfig
+	ReverseFilters bool
 }
 
 func GetConfig() Configuration {

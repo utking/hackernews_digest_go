@@ -71,8 +71,8 @@ func (f *Fetcher) fetchOne(id int64) (JsonNewsItem, error) {
 
 // Load IDs for news items that are already in the repository. For those prefetched IDs
 // those that are not in the repository yet, fetch them one by one and run against
-// the set of filters. For the `reverse`'d filters, the news item must be in none of them.
-func (f *Fetcher) filter(prefetched *[]int64, reverse bool) ([]DigestItem, error) {
+// the set of filters. For the reverse'd filters, the news item must be in none of them.
+func (f *Fetcher) filter(prefetched *[]int64) ([]DigestItem, error) {
 	digestItems := make([]DigestItem, 0)
 	newItems := make([]DigestItem, 0)
 
@@ -110,7 +110,7 @@ func (f *Fetcher) filter(prefetched *[]int64, reverse bool) ([]DigestItem, error
 			}
 			newItems = append(newItems, digestItem)
 
-			if f.RunFilter(&newItem, reverse) {
+			if f.RunFilter(&newItem) {
 				digestItems = append(digestItems, digestItem)
 			}
 		}
@@ -124,8 +124,8 @@ func (f *Fetcher) filter(prefetched *[]int64, reverse bool) ([]DigestItem, error
 }
 
 // Run a news item against all the configured filters
-func (f *Fetcher) RunFilter(newItem *JsonNewsItem, reverse bool) bool {
-	if reverse {
+func (f *Fetcher) RunFilter(newItem *JsonNewsItem) bool {
+	if f.Settings.ReverseFilters {
 		anyFilterHit := false
 		for _, filterItem := range f.filters {
 			hit, _ := regexp.MatchString(REGEX_CASE_INSENSITIVE+filterItem, newItem.Title)
@@ -156,7 +156,7 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 }
 
 // The main runner function
-func (f *Fetcher) Run(reverse bool) Results {
+func (f *Fetcher) Run() Results {
 	f.filters = f.prepareFilters()
 	f.repository = DataRepository{dbConfig: f.Settings.DatabaseFile, purgeAfter: f.Settings.PurgeAfterDays}
 	f.repository.Init()
@@ -166,13 +166,13 @@ func (f *Fetcher) Run(reverse bool) Results {
 	if err != nil {
 		log.Fatal("PREFETCH: ", err)
 	}
-	digest, err := f.filter(prefetchedItems, reverse)
+	digest, err := f.filter(prefetchedItems)
 	if err != nil {
 		log.Fatal("FILTER: ", err)
 	}
 	results := Results{
 		NewItems: uint(len(digest)),
-		Filters: uint(len(f.filters)),
+		Filters:  uint(len(f.filters)),
 	}
 	if len(digest) > 0 {
 		if f.Settings.EmailTo != "" {
