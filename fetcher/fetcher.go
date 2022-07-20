@@ -1,16 +1,13 @@
 package fetcher
 
 import (
-	"crypto/tls"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"net/smtp"
 	"regexp"
 	"strings"
-	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -54,29 +51,6 @@ const REGEX_CASE_INSENSITIVE = "(?i)"
 const VACUUM = "VACUUM"
 const SELECT_ITEMS = "SELECT id FROM news_items"
 const INSERT_ITEM = "INSERT INTO news_items VALUES (?,?,?,?)"
-const BOUNDARY_STRING = "--boundary-string--"
-const EMAIL_MIME_HEADERS = "Content-Type: multipart/alternative; boundary=\"boundary-string\"" + CRLF +
-	"MIME-Version: 1.0" + DBL_CRLF
-const EMAIL_TEXT_HEADER = "--boundary-string" + CRLF + "Content-Type: text/plain; charset=\"utf-8\"" + CRLF +
-	"MIME-Version: 1.0" + CRLF + "Content-Transfer-Encoding: quoted-printable" + CRLF +
-	"Content-Disposition: inline" + DBL_CRLF
-const EMAIL_HTML_HEADER = "--boundary-string" + CRLF + "Content-Type: text/html; charset=\"utf-8\"" + CRLF +
-	"MIME-Version: 1.0" + CRLF + "Content-Transfer-Encoding: quoted-printable" + CRLF +
-	"Content-Disposition: inline" + DBL_CRLF
-const DIGEST_ITEM_TEXT_TEMPLATE = "* %s - %s" + CRLF
-const DIGEST_ITEM_HTML_TEMPLATE = "<li><a href=\"%s\">%s</a></li>" + CRLF
-const DIGEST_HTML_TEMPLATE = `<html>
-<head>HackerNews Digest</head>
-<body>
-  <p>Hi!</p>
-  <div>
-  <ul>
-  %s
-  </ul>
-  </div>
-  <p>Generated: %s</p>
-</body>
-</html>%s`
 
 // Methods
 
@@ -248,75 +222,8 @@ func (f *Fetcher) filter(prefetched *[]int64, reverse bool) ([]DigestItem, error
 }
 
 func (f *Fetcher) SendEmail(digest *[]DigestItem) {
-	if f.Settings.Smtp.Host == "" {
-		log.Println("SMTP Host is empty. Skipping sending the Email")
-		return
-	}
-
-	headers := make(map[string]string)
-	headers["From"] = f.Settings.Smtp.From
-	headers["Subject"] = f.Settings.Smtp.Subject
-
-	messageStart := ""
-	for k, v := range headers {
-		messageStart += fmt.Sprintf("%s: %s" + CRLF, k, v)
-	}
-
-	digestItemsHtml := ""
-	digestItemsText := "Hi!" + DBL_CRLF
-	for _, digestItem := range *digest {
-		digestItemsHtml += fmt.Sprintf(DIGEST_ITEM_HTML_TEMPLATE,
-			digestItem.newsUrl, digestItem.newsTitle)
-		digestItemsText += fmt.Sprintf(DIGEST_ITEM_TEXT_TEMPLATE, digestItem.newsTitle, digestItem.newsUrl)
-	}
-	mime := EMAIL_MIME_HEADERS
-	textHeader := EMAIL_TEXT_HEADER
-	htmlHeader := EMAIL_HTML_HEADER
-	digestHtml := fmt.Sprintf(DIGEST_HTML_TEMPLATE, digestItemsHtml, time.Now().Format(time.RFC1123Z), DBL_CRLF)
-
-	msg := messageStart + mime + textHeader + digestItemsText + DBL_CRLF + htmlHeader + digestHtml + BOUNDARY_STRING
-
-	c, err := smtp.Dial(fmt.Sprintf("%s:%d", f.Settings.Smtp.Host, f.Settings.Smtp.Port))
-	if err != nil {
-		log.Fatal("EMAIL: ", err)
-	}
-
-	auth := smtp.PlainAuth("", f.Settings.Smtp.Username, f.Settings.Smtp.Password, f.Settings.Smtp.Host)
-
-	if f.Settings.Smtp.UseTls {
-		tlsconfig := &tls.Config{
-			InsecureSkipVerify: true,
-			ServerName:         f.Settings.Smtp.Host,
-		}
-		c.StartTLS(tlsconfig)
-	}
-
-	if err = c.Auth(auth); err != nil {
-		log.Panic(err)
-	}
-
-	if err := c.Mail(f.Settings.Smtp.From); err != nil {
-		log.Fatal("EMAIL_SENDER: ", err)
-	}
-	if err := c.Rcpt(f.Settings.EmailTo); err != nil {
-		log.Fatal("EMAIL_RECEIVER: ", err)
-	}
-	wc, err := c.Data()
-	if err != nil {
-		log.Fatal("EMAIL_START_CONTENT: ", err)
-	}
-	_, err = fmt.Fprint(wc, msg)
-	if err != nil {
-		log.Fatal("EMAIL_SET_CONTENT: ", err)
-	}
-	err = wc.Close()
-	if err != nil {
-		log.Fatal("EMAIL_CLOSE_CONTENT: ", err)
-	}
-	err = c.Quit()
-	if err != nil {
-		log.Fatal("EMAIL_QUIT: ", err)
-	}
+	mailer := DigestMailer{smtpConfig: f.Settings.Smtp}
+	mailer.SendEmail(digest, f.Settings.EmailTo)
 }
 
 func (f *Fetcher) Run(reverseFilters ...bool) Results {
@@ -347,7 +254,7 @@ func (f *Fetcher) Run(reverseFilters ...bool) Results {
 			f.SendEmail(&digest)
 		} else {
 			for _, digestItem := range digest {
-				fmt.Printf("* %s - %s" + CRLF, digestItem.newsTitle, digestItem.newsUrl)
+				fmt.Printf("* %s - %s"+CRLF, digestItem.newsTitle, digestItem.newsUrl)
 			}
 		}
 	}
