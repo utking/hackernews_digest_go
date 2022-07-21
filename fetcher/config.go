@@ -1,7 +1,6 @@
 package fetcher
 
 import (
-	"log"
 	"os"
 
 	"github.com/tkanos/gonfig"
@@ -30,7 +29,7 @@ type Configuration struct {
 	ReverseFilters bool
 }
 
-func GetConfig() Configuration {
+func GetConfig() (Configuration, error) {
 	configFile := os.Getenv("CONFIG_FILENAME")
 	if configFile == "" {
 		configFile = defaultConfigFile
@@ -39,10 +38,10 @@ func GetConfig() Configuration {
 	config := Configuration{}
 	err := gonfig.GetConf(configFile, &config)
 	if err != nil {
-		log.Fatal("CONFIG_GET: ", err)
+		return Configuration{}, err
 	}
 	if len(config.Filters) == 0 {
-		log.Fatal("CONFIG_FILTERS no filters configured")
+		return Configuration{}, err
 	}
-	return config
+	return config, nil
 }

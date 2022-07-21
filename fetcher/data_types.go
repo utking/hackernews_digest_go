@@ -2,6 +2,11 @@ package fetcher
 
 // Data Types
 
+type FilterItem struct {
+	Title string
+	Value string
+}
+
 type PrefetchResults []int64
 
 type DigestItem struct {

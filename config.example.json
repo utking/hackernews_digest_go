@@ -4,9 +4,9 @@
   "PurgeAfterDays": 30,
   "ReverseFilters": false,
   "Filters": [
+    {"title": "SQL", "value": "sql"},
     {"title": "JavaScript", "value": "\\bjs\\b,(ecma|java).*script,\\bnode(\\.?js)?\\b,\\bnpm\\b"},
     {"title": "Covid", "value": "\\bcovid,\\bdelta\\b,vaccin"},
-    {"title": "SQL", "value": "sql"},
     {"title": "GraphQL", "value": "graphql"},
     {"title": "API", "value": "api\\b"},
     {"title": "Hackers", "value": "\\bhack,\\bpassw,\\bsecuri,\\bvulner,\\bbot\\b,\\bbotnet,owasp"},
