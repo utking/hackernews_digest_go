@@ -30,11 +30,25 @@ const DIGEST_HTML_TEMPLATE = `<html>
 </body>
 </html>%s`
 const BOUNDARY_STRING = "--boundary-string--"
+const BASE64_LINE_LEN = 76
 
 // Mailer data type and its methods
 
 type DigestMailer struct {
 	smtpConfig SmtpConfig
+}
+
+func toBase64(input string) string {
+	encoded := base64.StdEncoding.EncodeToString([]byte(input))
+	normalized := ""
+	input_len := len(encoded)
+	cur_index := 0
+	for ; cur_index < len(encoded); cur_index += BASE64_LINE_LEN {
+		chunk_size := min(BASE64_LINE_LEN, input_len)
+		normalized += fmt.Sprintf("%s"+CRLF, encoded[cur_index:cur_index+chunk_size])
+		input_len -= BASE64_LINE_LEN
+	}
+	return normalized
 }
 
 // Prepare and send an email with the list of the provided news items
@@ -47,6 +61,7 @@ func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo string) {
 	headers := make(map[string]string)
 	headers["From"] = mailer.smtpConfig.From
 	headers["Subject"] = mailer.smtpConfig.Subject
+	headers["To"] = emailTo
 
 	messageStart := ""
 	for k, v := range headers {
@@ -66,8 +81,8 @@ func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo string) {
 	digestHtml := fmt.Sprintf(DIGEST_HTML_TEMPLATE, digestItemsHtml, time.Now().Format(time.RFC1123Z), DBL_CRLF)
 
 	msg := messageStart + mime +
-		textHeader + base64.StdEncoding.EncodeToString([]byte(digestItemsText)) + DBL_CRLF +
-		htmlHeader + base64.StdEncoding.EncodeToString([]byte(digestHtml)) + DBL_CRLF +
+		textHeader + toBase64(digestItemsText) + CRLF +
+		htmlHeader + toBase64(digestHtml) + CRLF +
 		BOUNDARY_STRING
 
 	c, err := smtp.Dial(fmt.Sprintf("%s:%d", mailer.smtpConfig.Host, mailer.smtpConfig.Port))

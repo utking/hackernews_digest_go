@@ -1,8 +1,7 @@
 package fetcher
 
-import (
-	"testing"
-)
+import "testing"
+
 
 func PrepareItem() JsonNewsItem {
 	item := JsonNewsItem{
