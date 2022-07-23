@@ -62,6 +62,7 @@ func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo string) {
 	headers["From"] = mailer.smtpConfig.From
 	headers["Subject"] = mailer.smtpConfig.Subject
 	headers["To"] = emailTo
+	headers["Date"] = time.Now().Format(time.RFC822)
 
 	messageStart := ""
 	for k, v := range headers {
