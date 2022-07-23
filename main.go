@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	newsFetcher "github.com/utking/hackernews_digest_go/fetcher"
 )
@@ -13,7 +14,14 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	config, err := newsFetcher.GetConfig(args.Config)
+	cwd := "."
+	if len(args.Config) > 0 && args.Config[0] != '/' {
+		cwd, err = os.Getwd()
+		if err != nil {
+			log.Fatalln("Cannot find what directory we are in")
+		}
+	}
+	config, err := newsFetcher.GetConfig(cwd + string(os.PathSeparator) + args.Config)
 	if err != nil {
 		log.Fatalln(err)
 	}

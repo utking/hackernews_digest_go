@@ -10,5 +10,6 @@ require (
 require (
 	github.com/akamensky/argparse v1.3.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

@@ -4,8 +4,6 @@ import (
 	"github.com/tkanos/gonfig"
 )
 
-const defaultConfigFile = "./config.json"
-
 type SmtpConfig struct {
 	Host     string
 	Port     uint
@@ -17,9 +15,18 @@ type SmtpConfig struct {
 	Subject  string
 }
 
+type Database struct {
+	Driver   string
+	Database string
+	Username string
+	Password string
+	Host     string
+	Port     string
+}
+
 type Configuration struct {
 	ApiBaseUrl     string
-	DatabaseFile   string
+	Database       Database
 	PurgeAfterDays uint
 	Filters        []FilterItem
 	EmailTo        string

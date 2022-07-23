@@ -4,28 +4,34 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 // Constants
 
-const SQL_DRIVER = "sqlite3"
 const TABLE_NAME = "news_items"
 const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS %s
 (
 	id INTEGER PRIMARY KEY,
-	created_at TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
 	news_title TEXT NOT NULL,
 	news_url  TEXT NOT NULL
 )`
 
 const DBL_CRLF = CRLF + CRLF
-const VACUUM = "VACUUM"
+const SQLITE_VACUUM = "VACUUM"
+const MYSQL_VACUUM = "SELECT 1"
 const SELECT_ITEMS = "SELECT id FROM %s"
 const INSERT_ITEM = "INSERT INTO %s VALUES (?,?,?,?)"
-const PURGE_ITEMS = "DELETE FROM %s WHERE date(created_at, \"unixepoch\", \"localtime\") < date(\"now\", \"-%d days\")"
+const SQLITE_PURGE_ITEMS = "DELETE FROM %s WHERE date(created_at, \"unixepoch\", \"localtime\") < date(\"now\", \"-%d days\")"
+const MYSQL_PURGE_ITEMS = "DELETE FROM %s WHERE FROM_UNIXTIME(created_at) <= (NOW() - INTERVAL %d DAY)"
+
+var PURGE_ITEMS string
+var VACUUM string
 
 type DataRepository struct {
-	dbConfig   string
+	dbConfig   Database
 	purgeAfter uint
 	db         *sql.DB
 	reverse    bool
@@ -46,7 +52,19 @@ func (repo *DataRepository) purgeOld() error {
 // Open a database file and purge old news items from it
 func (repo *DataRepository) prepareDb() error {
 	var err error
-	repo.db, err = sql.Open(SQL_DRIVER, repo.dbConfig)
+	if repo.dbConfig.Driver == "sqlite3" {
+		repo.db, err = sql.Open(repo.dbConfig.Driver, repo.dbConfig.Database)
+		PURGE_ITEMS = SQLITE_PURGE_ITEMS
+		VACUUM = SQLITE_VACUUM
+	} else if repo.dbConfig.Driver == "mysql" {
+		repo.db, err = sql.Open(repo.dbConfig.Driver,
+			fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", repo.dbConfig.Username,
+				repo.dbConfig.Password, repo.dbConfig.Host,
+				repo.dbConfig.Port, repo.dbConfig.Database,
+			))
+		PURGE_ITEMS = MYSQL_PURGE_ITEMS
+		VACUUM = MYSQL_VACUUM
+	}
 	if err != nil {
 		return err
 	}
