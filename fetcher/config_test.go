@@ -15,11 +15,8 @@ func TestGetConfiguration(t *testing.T) {
 	if cfg.Database.Driver != "sqlite3" {
 		t.Fatalf("Database driver [%s] value is wrong", cfg.Database.Driver)
 	}
-	if cfg.Database.Host != "127.0.0.1" {
-		t.Fatalf("Database host [%s] value is wrong", cfg.Database.Host)
-	}
-	if cfg.Database.Port != "3306" {
-		t.Fatalf("Database port [%s] value is wrong", cfg.Database.Port)
+	if cfg.Database.Address != "tcp(127.0.0.1:3306)" {
+		t.Fatalf("Database Address [%s] value is wrong", cfg.Database.Address)
 	}
 	if cfg.Database.Username != "user" {
 		t.Fatalf("Database username [%s] value is wrong", cfg.Database.Username)

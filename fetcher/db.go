@@ -58,10 +58,8 @@ func (repo *DataRepository) prepareDb() error {
 		VACUUM = SQLITE_VACUUM
 	} else if repo.dbConfig.Driver == "mysql" {
 		repo.db, err = sql.Open(repo.dbConfig.Driver,
-			fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", repo.dbConfig.Username,
-				repo.dbConfig.Password, repo.dbConfig.Host,
-				repo.dbConfig.Port, repo.dbConfig.Database,
-			))
+			fmt.Sprintf("%s:%s@%s/%s", repo.dbConfig.Username,
+				repo.dbConfig.Password, repo.dbConfig.Address, repo.dbConfig.Database))
 		PURGE_ITEMS = MYSQL_PURGE_ITEMS
 		VACUUM = MYSQL_VACUUM
 	}

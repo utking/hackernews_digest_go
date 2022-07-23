@@ -20,8 +20,7 @@ type Database struct {
 	Database string
 	Username string
 	Password string
-	Host     string
-	Port     string
+	Address  string
 }
 
 type Configuration struct {

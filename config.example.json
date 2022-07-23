@@ -3,8 +3,7 @@
   "PurgeAfterDays": 30,
   "Database": {
     "Driver": "sqlite3",
-    "Host": "127.0.0.1",
-    "Port": "3306",
+    "Address": "tcp(127.0.0.1:3306)",
     "Database": "./hackernews_db.sqlite",
     "Username": "user",
     "Password": "password"
