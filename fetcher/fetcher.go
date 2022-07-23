@@ -161,16 +161,19 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 }
 
 func (f *Fetcher) Vacuum() {
+	f.setUpRepository()
+	f.repository.Close()
+}
+
+func (f *Fetcher) setUpRepository() {
 	f.repository = DataRepository{dbConfig: f.Settings.Database, purgeAfter: f.Settings.PurgeAfterDays, reverse: f.Reverse}
 	f.repository.Init()
-	f.repository.Close()
 }
 
 // The main runner function
 func (f *Fetcher) Run() Results {
 	f.filters = f.prepareFilters()
-	f.repository = DataRepository{dbConfig: f.Settings.Database, purgeAfter: f.Settings.PurgeAfterDays, reverse: f.Reverse}
-	f.repository.Init()
+	f.setUpRepository()
 	defer f.repository.Close()
 
 	prefetchedItems, err := f.prefetch()

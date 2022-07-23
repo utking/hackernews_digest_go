@@ -16,8 +16,7 @@ func main() {
 	}
 	cwd := "."
 	if len(args.Config) > 0 && args.Config[0] != '/' {
-		cwd, err = os.Getwd()
-		if err != nil {
+		if cwd, err = os.Getwd(); err != nil {
 			log.Fatalln("Cannot find what directory we are in")
 		}
 	}

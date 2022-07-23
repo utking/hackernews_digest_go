@@ -21,6 +21,12 @@ func TestGetConfiguration(t *testing.T) {
 	if cfg.Database.Port != "3306" {
 		t.Fatalf("Database port [%s] value is wrong", cfg.Database.Port)
 	}
+	if cfg.Database.Username != "user" {
+		t.Fatalf("Database username [%s] value is wrong", cfg.Database.Username)
+	}
+	if cfg.Database.Password != "password" {
+		t.Fatalf("Database password [%s] value is wrong", cfg.Database.Password)
+	}
 	if cfg.Database.Database != "./hackernews_db.sqlite" {
 		t.Fatalf("DatabaseFile value [%s] is wrong", cfg.Database.Database)
 	}
