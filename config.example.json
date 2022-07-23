@@ -1,7 +1,14 @@
 {
   "ApiBaseUrl": "https://hacker-news.firebaseio.com/v0",
-  "DatabaseFile": "./hackernews_db.sqlite",
   "PurgeAfterDays": 30,
+  "Database": {
+    "Driver": "sqlite3",
+    "Host": "127.0.0.1",
+    "Port": "3306",
+    "Database": "./hackernews_db.sqlite",
+    "Username": "user",
+    "Password": "password"
+  },
   "Filters": [
     {"title": "SQL", "value": "sql"},
     {"title": "JavaScript", "value": "\\bjs\\b,(ecma|java).*script,\\bnode(\\.?js)?\\b,\\bnpm\\b"},

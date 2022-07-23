@@ -10,25 +10,34 @@ func TestGetConfiguration(t *testing.T) {
 		t.Fatalf("Could not load configuration: %s", err)
 	}
 	if cfg.ApiBaseUrl != "https://hacker-news.firebaseio.com/v0" {
-		t.Fatal("ApiBaseUrl value is wrong")
+		t.Fatalf("ApiBaseUrl value [%s] is wrong", cfg.ApiBaseUrl)
 	}
-	if cfg.DatabaseFile != "./hackernews_db.sqlite" {
-		t.Fatal("DatabaseFile value is wrong")
+	if cfg.Database.Driver != "sqlite3" {
+		t.Fatalf("Database driver [%s] value is wrong", cfg.Database.Driver)
+	}
+	if cfg.Database.Host != "127.0.0.1" {
+		t.Fatalf("Database host [%s] value is wrong", cfg.Database.Host)
+	}
+	if cfg.Database.Port != "3306" {
+		t.Fatalf("Database port [%s] value is wrong", cfg.Database.Port)
+	}
+	if cfg.Database.Database != "./hackernews_db.sqlite" {
+		t.Fatalf("DatabaseFile value [%s] is wrong", cfg.Database.Database)
 	}
 	if cfg.PurgeAfterDays != 30 {
-		t.Fatal("PurgeAfterDays value is wrong")
+		t.Fatalf("PurgeAfterDays value [%d] is wrong", cfg.PurgeAfterDays)
 	}
 	if cfg.EmailTo != "to@example.com" {
-		t.Fatal("EmailTo value is wrong")
+		t.Fatalf("EmailTo value [%s] is wrong", cfg.EmailTo)
 	}
 	if len(cfg.Filters) == 0 {
 		t.Fatal("Filters list has no records")
 	}
 	if cfg.Filters[0].Title != "SQL" {
-		t.Fatal("Filter title is wrong")
+		t.Fatalf("Filter title [%s] is wrong", cfg.Filters[0].Title)
 	}
 	if cfg.Filters[0].Value != "sql" {
-		t.Fatal("Filter value is wrong")
+		t.Fatalf("Filter value [%s] is wrong", cfg.Filters[0].Value)
 	}
 }
 

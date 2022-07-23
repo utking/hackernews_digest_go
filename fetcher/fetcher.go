@@ -161,7 +161,7 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 }
 
 func (f *Fetcher) Vacuum() {
-	f.repository = DataRepository{dbConfig: f.Settings.DatabaseFile, purgeAfter: f.Settings.PurgeAfterDays, reverse: f.Reverse}
+	f.repository = DataRepository{dbConfig: f.Settings.Database, purgeAfter: f.Settings.PurgeAfterDays, reverse: f.Reverse}
 	f.repository.Init()
 	f.repository.Close()
 }
@@ -169,7 +169,7 @@ func (f *Fetcher) Vacuum() {
 // The main runner function
 func (f *Fetcher) Run() Results {
 	f.filters = f.prepareFilters()
-	f.repository = DataRepository{dbConfig: f.Settings.DatabaseFile, purgeAfter: f.Settings.PurgeAfterDays, reverse: f.Reverse}
+	f.repository = DataRepository{dbConfig: f.Settings.Database, purgeAfter: f.Settings.PurgeAfterDays, reverse: f.Reverse}
 	f.repository.Init()
 	defer f.repository.Close()
 
