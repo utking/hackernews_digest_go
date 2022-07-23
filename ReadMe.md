@@ -13,3 +13,8 @@ To create a config-file, copy `config.example.json` to `config.json` (or any oth
 #### Output to console
 
 Set "EmailTo" to an empty string if you don't want to send emails but simply want to print out the digest to the console. Setting "EmailTo" to a non-empty string but having "Smtp.Host" empty, you prevent any output.
+
+### Arguments
+
+* -r|--reverse to reverse the filtering
+* -v|--vacuum to remove old records, without running any updates
