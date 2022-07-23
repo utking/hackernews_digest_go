@@ -25,6 +25,7 @@ type Fetcher struct {
 	Settings   Configuration
 	repository DataRepository
 	filters    []string
+	Reverse    bool
 }
 
 // Parse the filters configuration and return it as a flat array of strings
@@ -125,7 +126,7 @@ func (f *Fetcher) filter(prefetched *[]int64) ([]DigestItem, error) {
 
 // Run a news item against all the configured filters
 func (f *Fetcher) RunFilter(newItem *JsonNewsItem) bool {
-	if f.Settings.ReverseFilters {
+	if f.Reverse {
 		anyFilterHit := false
 		for _, filterItem := range f.filters {
 			hit, _ := regexp.MatchString(REGEX_CASE_INSENSITIVE+filterItem, newItem.Title)
@@ -151,14 +152,24 @@ func (f *Fetcher) RunFilter(newItem *JsonNewsItem) bool {
 
 // Compile an email from the provided news list and send it
 func (f *Fetcher) SendEmail(digest *[]DigestItem) {
+	subjectPostfix := ""
+	if f.Reverse {
+		subjectPostfix = " Reversed"
+	}
 	mailer := DigestMailer{smtpConfig: f.Settings.Smtp}
-	mailer.SendEmail(digest, f.Settings.EmailTo)
+	mailer.SendEmail(digest, f.Settings.EmailTo, f.Settings.Smtp.Subject+subjectPostfix)
+}
+
+func (f *Fetcher) Vacuum() {
+	f.repository = DataRepository{dbConfig: f.Settings.DatabaseFile, purgeAfter: f.Settings.PurgeAfterDays, reverse: f.Reverse}
+	f.repository.Init()
+	f.repository.Close()
 }
 
 // The main runner function
 func (f *Fetcher) Run() Results {
 	f.filters = f.prepareFilters()
-	f.repository = DataRepository{dbConfig: f.Settings.DatabaseFile, purgeAfter: f.Settings.PurgeAfterDays}
+	f.repository = DataRepository{dbConfig: f.Settings.DatabaseFile, purgeAfter: f.Settings.PurgeAfterDays, reverse: f.Reverse}
 	f.repository.Init()
 	defer f.repository.Close()
 

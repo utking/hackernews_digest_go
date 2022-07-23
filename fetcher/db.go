@@ -2,13 +2,15 @@ package fetcher
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 )
 
 // Constants
 
 const SQL_DRIVER = "sqlite3"
-const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS news_items
+const TABLE_NAME = "news_items"
+const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS %s
 (
 	id INTEGER PRIMARY KEY,
 	created_at TEXT NOT NULL,
@@ -18,35 +20,37 @@ const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS news_items
 
 const DBL_CRLF = CRLF + CRLF
 const VACUUM = "VACUUM"
-const SELECT_ITEMS = "SELECT id FROM news_items"
-const INSERT_ITEM = "INSERT INTO news_items VALUES (?,?,?,?)"
+const SELECT_ITEMS = "SELECT id FROM %s"
+const INSERT_ITEM = "INSERT INTO %s VALUES (?,?,?,?)"
+const PURGE_ITEMS = "DELETE FROM %s WHERE date(created_at, \"unixepoch\", \"localtime\") < date(\"now\", \"-%d days\")"
 
 type DataRepository struct {
 	dbConfig   string
 	purgeAfter uint
-	Db         *sql.DB
+	db         *sql.DB
+	reverse    bool
+	tbl_prefix string
 }
 
 // Remove news items older than `purgeAfter` days
 func (repo *DataRepository) purgeOld() error {
-	purgeStmt := `DELETE FROM news_items WHERE 
-			date(created_at, "unixepoch", "localtime") < date("now", "-#{f.purgeAfter} days")`
-	_, err := repo.Db.Exec(purgeStmt)
+	purgeStmt := fmt.Sprintf(PURGE_ITEMS, repo.tbl_prefix+TABLE_NAME, repo.purgeAfter)
+	_, err := repo.db.Exec(purgeStmt)
 	if err != nil {
 		return err
 	}
-	_, err = repo.Db.Exec(VACUUM)
+	_, err = repo.db.Exec(VACUUM)
 	return err
 }
 
 // Open a database file and purge old news items from it
 func (repo *DataRepository) prepareDb() error {
 	var err error
-	repo.Db, err = sql.Open(SQL_DRIVER, repo.dbConfig)
+	repo.db, err = sql.Open(SQL_DRIVER, repo.dbConfig)
 	if err != nil {
 		return err
 	}
-	_, err = repo.Db.Exec(CREATE_TABLE)
+	_, err = repo.db.Exec(fmt.Sprintf(CREATE_TABLE, repo.tbl_prefix+TABLE_NAME))
 	if err != nil {
 		return err
 	}
@@ -59,6 +63,9 @@ func (repo *DataRepository) prepareDb() error {
 
 // Entry point for initializing a database
 func (repo *DataRepository) Init() {
+	if repo.reverse {
+		repo.tbl_prefix = "reverse_"
+	}
 	err := repo.prepareDb()
 	if err != nil {
 		log.Fatal("PREPARE DB: ", err)
@@ -68,7 +75,7 @@ func (repo *DataRepository) Init() {
 // Pull existing news items' IDs
 func (repo *DataRepository) GetExistingIDs() (map[int64]interface{}, error) {
 	existingIDs := make(map[int64]interface{}, 0)
-	rows, err := repo.Db.Query(SELECT_ITEMS)
+	rows, err := repo.db.Query(fmt.Sprintf(SELECT_ITEMS, repo.tbl_prefix+TABLE_NAME))
 	if err != nil {
 		return existingIDs, err
 	}
@@ -85,8 +92,8 @@ func (repo *DataRepository) GetExistingIDs() (map[int64]interface{}, error) {
 }
 
 // Add the provided news items to the database
-func (f *DataRepository) UpdateItems(newItems []DigestItem) {
-	stmt, err := f.Db.Prepare(INSERT_ITEM)
+func (repo *DataRepository) UpdateItems(newItems []DigestItem) {
+	stmt, err := repo.db.Prepare(fmt.Sprintf(INSERT_ITEM, repo.tbl_prefix+TABLE_NAME))
 	if err != nil {
 		log.Fatal("PREPARE: ", err)
 	} else {
@@ -101,5 +108,5 @@ func (f *DataRepository) UpdateItems(newItems []DigestItem) {
 
 // Close the database
 func (repo *DataRepository) Close() {
-	repo.Db.Close()
+	repo.db.Close()
 }

@@ -1,8 +1,6 @@
 package fetcher
 
 import (
-	"os"
-
 	"github.com/tkanos/gonfig"
 )
 
@@ -26,17 +24,11 @@ type Configuration struct {
 	Filters        []FilterItem
 	EmailTo        string
 	Smtp           SmtpConfig
-	ReverseFilters bool
 }
 
-func GetConfig() (Configuration, error) {
-	configFile := os.Getenv("CONFIG_FILENAME")
-	if configFile == "" {
-		configFile = defaultConfigFile
-	}
-
+func GetConfig(filename string) (Configuration, error) {
 	config := Configuration{}
-	err := gonfig.GetConf(configFile, &config)
+	err := gonfig.GetConf(filename, &config)
 	if err != nil {
 		return Configuration{}, err
 	}

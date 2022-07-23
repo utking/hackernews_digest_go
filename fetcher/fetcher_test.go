@@ -2,7 +2,6 @@ package fetcher
 
 import "testing"
 
-
 func PrepareItem() JsonNewsItem {
 	item := JsonNewsItem{
 		Id:    1,
@@ -15,7 +14,6 @@ func PrepareItem() JsonNewsItem {
 func TestRunFilterHit(t *testing.T) {
 	item := PrepareItem()
 	config := Configuration{
-		ReverseFilters: false,
 		Filters: []FilterItem{
 			{
 				Title: "HitTest",
@@ -23,7 +21,7 @@ func TestRunFilterHit(t *testing.T) {
 			},
 		},
 	}
-	fetcher := Fetcher{Settings: config}
+	fetcher := Fetcher{Settings: config, Reverse: false}
 	filters := fetcher.prepareFilters()
 	if len(filters) != 1 {
 		t.Fatal("Wrong number of filters")
@@ -36,7 +34,6 @@ func TestRunFilterHit(t *testing.T) {
 func TestRunFilterMiss(t *testing.T) {
 	item := PrepareItem()
 	config := Configuration{
-		ReverseFilters: false,
 		Filters: []FilterItem{
 			{
 				Title: "MissTest",
@@ -44,7 +41,7 @@ func TestRunFilterMiss(t *testing.T) {
 			},
 		},
 	}
-	fetcher := Fetcher{Settings: config}
+	fetcher := Fetcher{Settings: config, Reverse: false}
 	filters := fetcher.prepareFilters()
 	if len(filters) != 1 {
 		t.Fatal("Wrong number of filters")
@@ -57,7 +54,6 @@ func TestRunFilterMiss(t *testing.T) {
 func TestReverseFilterHit(t *testing.T) {
 	item := PrepareItem()
 	config := Configuration{
-		ReverseFilters: true,
 		Filters: []FilterItem{
 			{
 				Title: "HitTest",
@@ -65,7 +61,7 @@ func TestReverseFilterHit(t *testing.T) {
 			},
 		},
 	}
-	fetcher := Fetcher{Settings: config}
+	fetcher := Fetcher{Settings: config, Reverse: true}
 	filters := fetcher.prepareFilters()
 	if len(filters) != 1 {
 		t.Fatal("Wrong number of filters")
@@ -78,7 +74,6 @@ func TestReverseFilterHit(t *testing.T) {
 func TestReverseFilterMiss(t *testing.T) {
 	item := PrepareItem()
 	config := Configuration{
-		ReverseFilters: true,
 		Filters: []FilterItem{
 			{
 				Title: "MissTest",
@@ -86,7 +81,7 @@ func TestReverseFilterMiss(t *testing.T) {
 			},
 		},
 	}
-	fetcher := Fetcher{Settings: config}
+	fetcher := Fetcher{Settings: config, Reverse: true}
 	filters := fetcher.prepareFilters()
 	if len(filters) != 1 {
 		t.Fatal("Wrong number of filters")
@@ -98,7 +93,6 @@ func TestReverseFilterMiss(t *testing.T) {
 
 func TestPrepareFilters(t *testing.T) {
 	config := Configuration{
-		ReverseFilters: true,
 		Filters: []FilterItem{
 			{
 				Title: "MissTest",

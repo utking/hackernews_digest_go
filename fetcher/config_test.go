@@ -1,13 +1,11 @@
 package fetcher
 
 import (
-	"os"
 	"testing"
 )
 
 func TestGetConfiguration(t *testing.T) {
-	os.Setenv("CONFIG_FILENAME", "../config.example.json")
-	cfg, err := GetConfig()
+	cfg, err := GetConfig("../config.example.json")
 	if err != nil {
 		t.Fatalf("Could not load configuration: %s", err)
 	}
@@ -19,9 +17,6 @@ func TestGetConfiguration(t *testing.T) {
 	}
 	if cfg.PurgeAfterDays != 30 {
 		t.Fatal("PurgeAfterDays value is wrong")
-	}
-	if cfg.ReverseFilters != false {
-		t.Fatal("ReverseFilters value is wrong")
 	}
 	if cfg.EmailTo != "to@example.com" {
 		t.Fatal("EmailTo value is wrong")
@@ -37,16 +32,8 @@ func TestGetConfiguration(t *testing.T) {
 	}
 }
 
-func TestDefaultFileGetConfiguration(t *testing.T) {
-	_, err := GetConfig()
-	if err != nil {
-		t.Fatalf("Wrong filename configuration could be loaded: %s", err)
-	}
-}
-
 func TestMissingFileGetConfiguration(t *testing.T) {
-	os.Setenv("CONFIG_FILENAME", "no-file.json")
-	_, err := GetConfig()
+	_, err := GetConfig("no-file.json")
 	if err == nil {
 		t.Fatal("Wrong configuration could be loaded")
 	}

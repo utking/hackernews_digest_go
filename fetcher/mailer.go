@@ -52,7 +52,7 @@ func toBase64(input string) string {
 }
 
 // Prepare and send an email with the list of the provided news items
-func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo string) {
+func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo string, emailSubject string) {
 	if mailer.smtpConfig.Host == "" {
 		log.Println("SMTP Host is empty. Skipping sending the Email")
 		return
@@ -60,9 +60,9 @@ func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo string) {
 
 	headers := make(map[string]string)
 	headers["From"] = mailer.smtpConfig.From
-	headers["Subject"] = mailer.smtpConfig.Subject
+	headers["Subject"] = emailSubject
 	headers["To"] = emailTo
-	headers["Date"] = time.Now().Format(time.RFC822)
+	headers["Date"] = time.Now().Format(time.RFC1123Z)
 
 	messageStart := ""
 	for k, v := range headers {
