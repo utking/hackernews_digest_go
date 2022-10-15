@@ -178,20 +178,28 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 	mailer.SendEmail(digest, f.Settings.EmailTo, f.Settings.Smtp.Subject+subjectPostfix)
 }
 
-func (f *Fetcher) Vacuum() {
-	f.setUpRepository()
+func (f *Fetcher) Vacuum() error {
+	if err := f.setUpRepository(); err != nil {
+		return err
+	}
+
 	f.repository.Close()
+
+	return nil
 }
 
-func (f *Fetcher) setUpRepository() {
+func (f *Fetcher) setUpRepository() error {
 	f.repository = DataRepository{dbConfig: f.Settings.Database, purgeAfter: f.Settings.PurgeAfterDays, reverse: f.Reverse}
-	f.repository.Init()
+	return f.repository.Init()
 }
 
 // The main runner function
 func (f *Fetcher) Run() (*Results, error) {
 	f.filters = f.prepareFilters()
-	f.setUpRepository()
+
+	if err := f.setUpRepository(); err != nil {
+		return nil, err
+	}
 
 	defer f.repository.Close()
 

@@ -57,16 +57,19 @@ func (repo *DataRepository) purgeOld() error {
 func (repo *DataRepository) prepareDB() error {
 	var err error
 
-	if repo.dbConfig.Driver == "sqlite3" {
+	switch repo.dbConfig.Driver {
+	case "sqlite3":
 		repo.db, err = sql.Open(repo.dbConfig.Driver, repo.dbConfig.Database)
 		PurgeItems = SQLitePurgeItems
 		Vacuum = SQLiteVacuum
-	} else if repo.dbConfig.Driver == "mysql" {
+	case "mysql":
 		repo.db, err = sql.Open(repo.dbConfig.Driver,
 			fmt.Sprintf("%s:%s@%s/%s", repo.dbConfig.Username,
 				repo.dbConfig.Password, repo.dbConfig.Address, repo.dbConfig.Database))
 		PurgeItems = MySQLPurgeItems
 		Vacuum = MySQLVacuum
+	default:
+		return fmt.Errorf("wrong repository driver")
 	}
 
 	if err != nil {
@@ -85,14 +88,16 @@ func (repo *DataRepository) prepareDB() error {
 }
 
 // Entry point for initializing a database
-func (repo *DataRepository) Init() {
+func (repo *DataRepository) Init() error {
 	if repo.reverse {
 		repo.tbl_prefix = "reverse_"
 	}
 
 	if err := repo.prepareDB(); err != nil {
-		log.Fatal("PREPARE DB: ", err)
+		return err
 	}
+
+	return nil
 }
 
 // Pull existing news items' IDs
