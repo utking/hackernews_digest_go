@@ -223,3 +223,13 @@ func TestFetchOneBroken(t *testing.T) {
 		t.Errorf("Expected ID to be %d, got %d", 0, item.Id)
 	}
 }
+
+func TestVacuum(t *testing.T) {
+	fetcher := Fetcher{Settings: Configuration{ApiBaseUrl: "", Database: Database{Driver: "sqlite3", Database: ":memory:"}}}
+
+	err := fetcher.Vacuum()
+
+	if err != nil {
+		t.Errorf("Vacuum should not throw any errors, %v", err)
+	}
+}

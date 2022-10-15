@@ -179,6 +179,7 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 }
 
 func (f *Fetcher) Vacuum() error {
+	// Vacuum is part of the SetUp phase; so run it and exit
 	if err := f.setUpRepository(); err != nil {
 		return err
 	}
