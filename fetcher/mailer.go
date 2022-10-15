@@ -6,18 +6,19 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
+	"strings"
 	"time"
 )
 
 // Constants
 
-const EMAIL_MIME_HEADERS = "Content-Type: multipart/alternative; boundary=\"boundary-string\"" + CRLF +
-	"MIME-Version: 1.0" + DBL_CRLF
-const EMAIL_SECTION_HEADER = "--boundary-string" + CRLF + "Content-Type: %s; charset=\"utf-8\"" + CRLF +
-	"Content-Transfer-Encoding: base64" + CRLF + "MIME-Version: 1.0" + DBL_CRLF
-const DIGEST_ITEM_TEXT_TEMPLATE = "* %s - %s" + CRLF
-const DIGEST_ITEM_HTML_TEMPLATE = "<li><a href=\"%s\">%s</a></li>" + CRLF
-const DIGEST_HTML_TEMPLATE = `<html>
+const EmailMimeHeaders = "Content-Type: multipart/alternative; boundary=\"boundary-string\"" + CRLF +
+	"MIME-Version: 1.0" + DblCrLf
+const EmailSectionHeader = "--boundary-string" + CRLF + "Content-Type: %s; charset=\"utf-8\"" + CRLF +
+	"Content-Transfer-Encoding: base64" + CRLF + "MIME-Version: 1.0" + DblCrLf
+const DigestItemTextTemplate = "* %s - %s" + CRLF
+const DigestItemHTMLTemplate = "<li><a href=\"%s\">%s</a></li>" + CRLF
+const DigestHTMLTemplate = `<html>
 <head>HackerNews Digest</head>
 <body>
   <p>Hi!</p>
@@ -29,8 +30,8 @@ const DIGEST_HTML_TEMPLATE = `<html>
   <p>Generated: %s</p>
 </body>
 </html>%s`
-const BOUNDARY_STRING = "--boundary-string--"
-const BASE64_LINE_LEN = 76
+const BoundaryString = "--boundary-string--"
+const Base64LineLength = 76
 
 // Mailer data type and its methods
 
@@ -41,50 +42,55 @@ type DigestMailer struct {
 func toBase64(input string) string {
 	encoded := base64.StdEncoding.EncodeToString([]byte(input))
 	normalized := ""
-	input_len := len(encoded)
-	cur_index := 0
-	for ; cur_index < len(encoded); cur_index += BASE64_LINE_LEN {
-		chunk_size := min(BASE64_LINE_LEN, input_len)
-		normalized += fmt.Sprintf("%s"+CRLF, encoded[cur_index:cur_index+chunk_size])
-		input_len -= BASE64_LINE_LEN
+	inputLen := len(encoded)
+	curIndex := 0
+
+	for ; curIndex < len(encoded); curIndex += Base64LineLength {
+		chunkSize := min(Base64LineLength, inputLen)
+		normalized += fmt.Sprintf("%s"+CRLF, encoded[curIndex:curIndex+chunkSize])
+		inputLen -= Base64LineLength
 	}
+
 	return normalized
 }
 
 // Prepare and send an email with the list of the provided news items
-func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo string, emailSubject string) {
+func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo, emailSubject string) {
 	if mailer.smtpConfig.Host == "" {
 		log.Println("SMTP Host is empty. Skipping sending the Email")
 		return
 	}
 
-	headers := make(map[string]string)
-	headers["From"] = mailer.smtpConfig.From
-	headers["Subject"] = emailSubject
-	headers["To"] = emailTo
-	headers["Date"] = time.Now().Format(time.RFC1123Z)
+	headers := map[string]string{
+		"From":    mailer.smtpConfig.From,
+		"Subject": emailSubject,
+		"To":      emailTo,
+		"Date":    time.Now().Format(time.RFC1123Z),
+	}
 
-	messageStart := ""
+	var messageBuilder, digestItemsHTMLBuilder, digestItemsTextBuilder strings.Builder
+
 	for k, v := range headers {
-		messageStart += fmt.Sprintf("%s: %s"+CRLF, k, v)
+		messageBuilder.WriteString(fmt.Sprintf("%s: %s"+CRLF, k, v))
 	}
 
-	digestItemsHtml := ""
-	digestItemsText := "Hi!" + DBL_CRLF
+	digestItemsTextBuilder.WriteString("Hi!" + DblCrLf)
+
 	for _, digestItem := range *digest {
-		digestItemsHtml += fmt.Sprintf(DIGEST_ITEM_HTML_TEMPLATE,
-			digestItem.newsUrl, digestItem.newsTitle)
-		digestItemsText += fmt.Sprintf(DIGEST_ITEM_TEXT_TEMPLATE, digestItem.newsTitle, digestItem.newsUrl)
+		digestItemsHTMLBuilder.WriteString(fmt.Sprintf(DigestItemHTMLTemplate,
+			digestItem.newsUrl, digestItem.newsTitle))
+		digestItemsTextBuilder.WriteString(fmt.Sprintf(DigestItemTextTemplate, digestItem.newsTitle, digestItem.newsUrl))
 	}
-	mime := EMAIL_MIME_HEADERS
-	textHeader := fmt.Sprintf(EMAIL_SECTION_HEADER, "text/plain")
-	htmlHeader := fmt.Sprintf(EMAIL_SECTION_HEADER, "text/html")
-	digestHtml := fmt.Sprintf(DIGEST_HTML_TEMPLATE, digestItemsHtml, time.Now().Format(time.RFC1123Z), DBL_CRLF)
 
-	msg := messageStart + mime +
-		textHeader + toBase64(digestItemsText) + CRLF +
-		htmlHeader + toBase64(digestHtml) + CRLF +
-		BOUNDARY_STRING
+	messageBuilder.WriteString(EmailMimeHeaders)
+	messageBuilder.WriteString(fmt.Sprintf(EmailSectionHeader, "text/plain"))
+	messageBuilder.WriteString(toBase64(digestItemsTextBuilder.String()))
+	messageBuilder.WriteString(CRLF)
+	messageBuilder.WriteString(fmt.Sprintf(EmailSectionHeader, "text/html"))
+	messageBuilder.WriteString(toBase64(fmt.Sprintf(DigestHTMLTemplate, digestItemsHTMLBuilder.String(),
+		time.Now().Format(time.RFC1123Z), DblCrLf)))
+	messageBuilder.WriteString(CRLF)
+	messageBuilder.WriteString(BoundaryString)
 
 	c, err := smtp.Dial(fmt.Sprintf("%s:%d", mailer.smtpConfig.Host, mailer.smtpConfig.Port))
 	if err != nil {
@@ -98,33 +104,36 @@ func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo string, emai
 			InsecureSkipVerify: true,
 			ServerName:         mailer.smtpConfig.Host,
 		}
-		c.StartTLS(tlsconfig)
+		_ = c.StartTLS(tlsconfig)
 	}
 
 	if err = c.Auth(auth); err != nil {
 		log.Panic(err)
 	}
 
-	if err := c.Mail(mailer.smtpConfig.From); err != nil {
+	if err = c.Mail(mailer.smtpConfig.From); err != nil {
 		log.Fatal("EMAIL_SENDER: ", err)
 	}
-	if err := c.Rcpt(emailTo); err != nil {
+
+	if err = c.Rcpt(emailTo); err != nil {
 		log.Fatal("EMAIL_RECEIVER: ", err)
 	}
+
 	wc, err := c.Data()
 	if err != nil {
 		log.Fatal("EMAIL_START_CONTENT: ", err)
 	}
-	_, err = fmt.Fprint(wc, msg)
+
+	_, err = fmt.Fprint(wc, messageBuilder.String())
 	if err != nil {
 		log.Fatal("EMAIL_SET_CONTENT: ", err)
 	}
-	err = wc.Close()
-	if err != nil {
+
+	if err = wc.Close(); err != nil {
 		log.Fatal("EMAIL_CLOSE_CONTENT: ", err)
 	}
-	err = c.Quit()
-	if err != nil {
+
+	if err = c.Quit(); err != nil {
 		log.Fatal("EMAIL_QUIT: ", err)
 	}
 }

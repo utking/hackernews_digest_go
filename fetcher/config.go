@@ -6,13 +6,13 @@ import (
 
 type SmtpConfig struct {
 	Host     string
-	Port     uint
 	From     string
 	Username string
 	Password string
+	Subject  string
+	Port     uint
 	UseTls   bool
 	UseSsl   bool
-	Subject  string
 }
 
 type Database struct {
@@ -25,21 +25,24 @@ type Database struct {
 
 type Configuration struct {
 	ApiBaseUrl     string
-	Database       Database
-	PurgeAfterDays uint
-	Filters        []FilterItem
 	EmailTo        string
+	Filters        []FilterItem
+	Database       Database
 	Smtp           SmtpConfig
+	PurgeAfterDays uint
 }
 
 func GetConfig(filename string) (Configuration, error) {
 	config := Configuration{}
 	err := gonfig.GetConf(filename, &config)
+
 	if err != nil {
 		return Configuration{}, err
 	}
+
 	if len(config.Filters) == 0 {
 		return Configuration{}, err
 	}
+
 	return config, nil
 }

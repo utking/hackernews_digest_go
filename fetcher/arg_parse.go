@@ -7,9 +7,9 @@ import (
 )
 
 type ArgParser struct {
+	Config  string
 	Reverse bool
 	Vacuum  bool
-	Config  string
 }
 
 func (p *ArgParser) Parse() error {
