@@ -3,7 +3,6 @@ package fetcher
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -125,18 +124,20 @@ func (repo *DataRepository) GetExistingIDs() (map[int64]interface{}, error) {
 }
 
 // Add the provided news items to the database
-func (repo *DataRepository) UpdateItems(newItems []DigestItem) {
+func (repo *DataRepository) UpdateItems(newItems *[]DigestItem) error {
 	stmt, err := repo.db.Prepare(fmt.Sprintf(InsertItems, repo.tbl_prefix+TableName))
 
 	if err != nil {
-		log.Fatal("PREPARE: ", err)
-	} else {
-		for _, newItem := range newItems {
-			if _, err := stmt.Exec(newItem.id, newItem.createdAt, newItem.newsTitle, newItem.newsUrl); err != nil {
-				log.Fatal("INSERT: ", err)
-			}
+		return err
+	}
+
+	for _, newItem := range *newItems {
+		if _, err := stmt.Exec(newItem.id, newItem.createdAt, newItem.newsTitle, newItem.newsUrl); err != nil {
+			return err
 		}
 	}
+
+	return nil
 }
 
 // Close the database

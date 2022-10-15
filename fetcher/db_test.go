@@ -55,9 +55,13 @@ func TestRepositoryUpdateItems(t *testing.T) {
 		t.Errorf("Expected 0 IDs in the repository, %d exist", len(items))
 	}
 
-	repo.UpdateItems([]DigestItem{
+	digest := &[]DigestItem{
 		{id: 111, newsTitle: "Some Ititem", newsUrl: "http://localhost", createdAt: 123456789},
-	})
+	}
+
+	if err := repo.UpdateItems(digest); err != nil {
+		t.Errorf("Could not update the repository")
+	}
 
 	items, _ = repo.GetExistingIDs()
 

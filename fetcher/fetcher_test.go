@@ -1,9 +1,15 @@
 package fetcher
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
+)
+
+const (
+	Hit  = true
+	Miss = false
 )
 
 func prepareItem() JsonNewsItem {
@@ -27,14 +33,14 @@ func TestRunFilterHit(t *testing.T) {
 		},
 	}
 	fetcher := Fetcher{Settings: config, Reverse: false}
-	filters := fetcher.prepareFilters()
+	fetcher.filters = fetcher.prepareFilters()
 
-	if len(filters) != 1 {
+	if len(fetcher.filters) != 1 {
 		t.Fatal("Wrong number of filters")
 	}
 
-	if fetcher.RunFilter(&item) {
-		t.Fatal("Filter did not work as expected")
+	if fetcher.FilterItem(&item) == Miss {
+		t.Fatal("Filter missed")
 	}
 }
 
@@ -44,19 +50,19 @@ func TestRunFilterMiss(t *testing.T) {
 		Filters: []FilterItem{
 			{
 				Title: "MissTest",
-				Value: "Titles",
+				Value: "News Header",
 			},
 		},
 	}
 	fetcher := Fetcher{Settings: config, Reverse: false}
-	filters := fetcher.prepareFilters()
+	fetcher.filters = fetcher.prepareFilters()
 
-	if len(filters) != 1 {
+	if len(fetcher.filters) != 1 {
 		t.Fatal("Wrong number of filters")
 	}
 
-	if fetcher.RunFilter(&item) {
-		t.Fatal("Filter did not work as expected")
+	if fetcher.FilterItem(&item) != Miss {
+		t.Fatal("Reverse filter did not miss")
 	}
 }
 
@@ -66,18 +72,18 @@ func TestReverseFilterHit(t *testing.T) {
 		Filters: []FilterItem{
 			{
 				Title: "HitTest",
-				Value: "Title",
+				Value: "Header",
 			},
 		},
 	}, Reverse: true}
-	filters := fetcher.prepareFilters()
+	fetcher.filters = fetcher.prepareFilters()
 
-	if len(filters) != 1 {
-		t.Fatal("Wrong number of filters", len(filters))
+	if len(fetcher.filters) != 1 {
+		t.Fatal("Wrong number of filters", len(fetcher.filters))
 	}
 
-	if !fetcher.RunFilter(&item) {
-		t.Fatal("Filter did not work as expected")
+	if fetcher.FilterItem(&item) != Hit {
+		t.Fatal("Reverse filter missed")
 	}
 }
 
@@ -87,19 +93,19 @@ func TestReverseFilterMiss(t *testing.T) {
 		Filters: []FilterItem{
 			{
 				Title: "MissTest",
-				Value: "Titles",
+				Value: "Title",
 			},
 		},
 	}
 	fetcher := Fetcher{Settings: config, Reverse: true}
-	filters := fetcher.prepareFilters()
+	fetcher.filters = fetcher.prepareFilters()
 
-	if len(filters) != 1 {
+	if len(fetcher.filters) != 1 {
 		t.Fatal("Wrong number of filters")
 	}
 
-	if !fetcher.RunFilter(&item) {
-		t.Fatal("Filter did not work as expected")
+	if fetcher.FilterItem(&item) != Miss {
+		t.Fatal("Reverse filter did not miss")
 	}
 }
 
@@ -113,13 +119,13 @@ func TestPrepareFilters(t *testing.T) {
 		},
 	}
 	fetcher := Fetcher{Settings: config}
-	filters := fetcher.prepareFilters()
+	fetcher.filters = fetcher.prepareFilters()
 
-	if len(filters) != 2 {
+	if len(fetcher.filters) != 2 {
 		t.Fatal("Wrong number of filters")
 	}
 
-	if filters[0] != "some" || filters[1] != "word" {
+	if fetcher.filters[0] != "some" || fetcher.filters[1] != "word" {
 		t.Fatal("Wrong filter values")
 	}
 }
@@ -154,7 +160,7 @@ func TestFetchOne(t *testing.T) {
 	newsID := int64(33214439)
 	expected := `{
 		"by": "endorphine",
-		"descendants": 34,
+		"descendants": 1,
 		"id": 33214439,
 		"kids": [
 			33216431
@@ -231,5 +237,121 @@ func TestVacuum(t *testing.T) {
 
 	if err != nil {
 		t.Errorf("Vacuum should not throw any errors, %v", err)
+	}
+}
+
+func TestFilterItems(t *testing.T) {
+	expectedPrefetched := "[33214440,33215770,33215771]"
+	oldNewsItemID := int64(33214440)
+	expectedDigest := map[int64]string{
+		33214440: `{
+			"by": "author",
+			"descendants": 1,
+			"id": 33214440,
+			"kids": [
+				33216444
+			],
+			"score": 10,
+			"time": 1665839487,
+			"title": "Some Title #1",
+			"type": "story",
+			"url": "https://some-host/1-story-uri/"
+		}`,
+		33215770: `{
+			"by": "author-2",
+			"descendants": 1,
+			"id": 33215770,
+			"kids": [
+				33215771
+			],
+			"score": 20,
+			"time": 1665839234,
+			"title": "Some Title #2",
+			"type": "story",
+			"url": "https://some-host/2-story-uri/"
+		}`,
+		33215771: `{
+			"by": "author-3",
+			"descendants": 1,
+			"id": 33215771,
+			"kids": [
+				33215772
+			],
+			"score": 21,
+			"time": 1665839235,
+			"title": "Some News",
+			"type": "story",
+			"url": ""
+		}`,
+	}
+
+	fetcher := Fetcher{Settings: Configuration{
+		ApiBaseUrl: "",
+		Filters:    []FilterItem{{Title: "Test filter", Value: "title"}},
+		Database:   Database{Driver: "sqlite3", Database: ":memory:"},
+	}}
+
+	fetcher.filters = fetcher.prepareFilters()
+
+	if err := fetcher.setUpRepository(); err != nil {
+		t.Errorf("Errof while initializing the repository, %v", err)
+	}
+
+	// Add "old" news items to the repository
+	err := fetcher.repository.UpdateItems(&[]DigestItem{
+		{
+			newsTitle: "Existing Title",
+			newsUrl:   "http://host",
+			id:        oldNewsItemID,
+		},
+	})
+
+	if err != nil {
+		t.Errorf("Counld not add an old news item")
+	}
+
+	httpmock.Activate()
+
+	defer httpmock.DeactivateAndReset()
+
+	// Mock the top stories
+	httpmock.RegisterResponder("GET", fetcher.Settings.ApiBaseUrl+"/topstories.json",
+		httpmock.NewStringResponder(200, expectedPrefetched))
+	// Mock stories
+	for id, resp := range expectedDigest {
+		httpmock.RegisterResponder("GET", fmt.Sprintf(fetcher.Settings.ApiBaseUrl+"/item/%d.json", id),
+			httpmock.NewStringResponder(200, resp))
+	}
+
+	prefetched, err := fetcher.prefetch()
+
+	if err != nil {
+		t.Errorf("Error while prefetching news items, %v", err)
+	}
+
+	if len(*prefetched) != 3 {
+		t.Errorf("Expected 3 prefetched items, got %d", len(*prefetched))
+	}
+
+	if (*prefetched)[0] != 33214440 || (*prefetched)[1] != 33215770 || (*prefetched)[2] != 33215771 {
+		t.Errorf("Expected %s prefetched items, got %v", expectedPrefetched, *prefetched)
+	}
+
+	filtered, digest, err := fetcher.filter(prefetched)
+
+	if err != nil {
+		t.Errorf("Error while filtering news items, %v", err)
+	}
+
+	if len(*filtered) != 2 {
+		t.Errorf("Expected 2 filtered items, got %d", len(*filtered))
+	}
+
+	if len(*digest) != 1 {
+		t.Errorf("Expected 1 digest item, got %d", len(*digest))
+	}
+
+	if (*digest)[0].id != 33215770 {
+		t.Errorf("Expected a news item with ID %d, got %d", 33215770, (*digest)[0].id)
 	}
 }

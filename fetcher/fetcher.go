@@ -17,10 +17,6 @@ const RegexCaseInsensitive = "(?i)"
 
 // Methods
 
-func (fe *FetchError) Error() string {
-	return fmt.Sprintf("Error: %s", "HackerNews data could not be fetched")
-}
-
 type Fetcher struct {
 	filters    []string
 	Settings   Configuration
@@ -84,7 +80,7 @@ func (f *Fetcher) fetchOne(id int64) (JsonNewsItem, error) {
 // Load IDs for news items that are already in the repository. For those prefetched IDs
 // those that are not in the repository yet, fetch them one by one and run against
 // the set of filters. For the reverse'd filters, the news item must be in none of them.
-func (f *Fetcher) filter(prefetched *[]int64) ([]DigestItem, error) {
+func (f *Fetcher) filter(prefetched *[]int64) (*[]DigestItem, *[]DigestItem, error) {
 	var (
 		newItems    []DigestItem
 		digestItems []DigestItem
@@ -93,16 +89,17 @@ func (f *Fetcher) filter(prefetched *[]int64) ([]DigestItem, error) {
 	// Fetch existing items from the DB
 	existingIDs, err := f.repository.GetExistingIDs()
 	if err != nil {
-		return Digest{}, err
+		return nil, nil, err
 	}
 
 	// Fetch news items which do not exist in the DB
 	for _, fetchID := range *prefetched {
+		// Skipping old news
 		if _, ok := existingIDs[fetchID]; ok {
 			continue
 		}
 
-		// Fetch the item
+		// Fetch a new
 		newItem, err := f.fetchOne(fetchID)
 		if err != nil {
 			log.Println("FETCH_ONE: ", err)
@@ -127,29 +124,23 @@ func (f *Fetcher) filter(prefetched *[]int64) ([]DigestItem, error) {
 
 			newItems = append(newItems, digestItem)
 
-			if f.RunFilter(&newItem) {
+			if f.FilterItem(&newItem) {
 				digestItems = append(digestItems, digestItem)
 			}
 		}
 	}
-	// Add newly fetched items into the repository
-	if len(newItems) > 0 {
-		f.repository.UpdateItems(newItems)
-	}
 
-	return digestItems, nil
+	return &newItems, &digestItems, nil
 }
 
 // Run a news item against all the configured filters
-func (f *Fetcher) RunFilter(newItem *JsonNewsItem) bool {
+func (f *Fetcher) FilterItem(newItem *JsonNewsItem) bool {
 	if f.Reverse {
 		anyFilterHit := false
 
 		for _, filterItem := range f.filters {
-			hit, _ := regexp.MatchString(RegexCaseInsensitive+filterItem, newItem.Title)
-			if hit {
-				anyFilterHit = true
-				break
+			if hit, _ := regexp.MatchString(RegexCaseInsensitive+filterItem, newItem.Title); hit {
+				return false
 			}
 		}
 
@@ -157,8 +148,7 @@ func (f *Fetcher) RunFilter(newItem *JsonNewsItem) bool {
 	}
 
 	for _, filterItem := range f.filters {
-		hit, _ := regexp.MatchString(RegexCaseInsensitive+filterItem, newItem.Title)
-		if hit {
+		if hit, _ := regexp.MatchString(RegexCaseInsensitive+filterItem, newItem.Title); hit {
 			return true
 		}
 	}
@@ -209,26 +199,33 @@ func (f *Fetcher) Run() (*Results, error) {
 		return nil, err
 	}
 
-	digest, err := f.filter(prefetchedItems)
+	filteredItems, digest, err := f.filter(prefetchedItems)
 	if err != nil {
 		return nil, err
 	}
 
-	results := Results{
-		NewItems: len(digest),
+	// Add newly fetched items into the repository
+	if len(*filteredItems) > 0 {
+		if err := f.repository.UpdateItems(filteredItems); err != nil {
+			return nil, fmt.Errorf("could not update the repository")
+		}
+	}
+
+	results := &Results{
+		NewItems: len(*digest),
 		Filters:  len(f.filters),
 	}
 
-	if len(digest) > 0 {
+	if len(*digest) > 0 {
 		if f.Settings.EmailTo != "" {
-			f.SendEmail(&digest)
+			f.SendEmail(digest)
 		} else {
 			// Print out to console
-			for _, digestItem := range digest {
+			for _, digestItem := range *digest {
 				fmt.Printf("* %s - %s"+CRLF, digestItem.newsTitle, digestItem.newsUrl)
 			}
 		}
 	}
 
-	return &results, nil
+	return results, nil
 }
