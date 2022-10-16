@@ -8,6 +8,9 @@
     "Username": "user",
     "Password": "password"
   },
+  "BlacklistedDomains": [
+    "www.businessinsider.com"
+  ],
   "Filters": [
     {"title": "SQL", "value": "sql"},
     {"title": "JavaScript", "value": "\\bjs\\b,(ecma|java).*script,\\bnode(\\.?js)?\\b,\\bnpm\\b"},

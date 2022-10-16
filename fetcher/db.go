@@ -3,15 +3,15 @@ package fetcher
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 // Constants
 
-const TABLE_NAME = "news_items"
-const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS %s
+const (
+	TableName   = "news_items"
+	CreateTable = `CREATE TABLE IF NOT EXISTS %s
 (
 	id INTEGER PRIMARY KEY,
 	created_at INTEGER NOT NULL,
@@ -19,107 +19,125 @@ const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS %s
 	news_url  TEXT NOT NULL
 )`
 
-const DBL_CRLF = CRLF + CRLF
-const SQLITE_VACUUM = "VACUUM"
-const MYSQL_VACUUM = "SELECT 1"
-const SELECT_ITEMS = "SELECT id FROM %s"
-const INSERT_ITEM = "INSERT INTO %s VALUES (?,?,?,?)"
-const SQLITE_PURGE_ITEMS = "DELETE FROM %s WHERE date(created_at, \"unixepoch\", \"localtime\") < date(\"now\", \"-%d days\")"
-const MYSQL_PURGE_ITEMS = "DELETE FROM %s WHERE FROM_UNIXTIME(created_at) <= (NOW() - INTERVAL %d DAY)"
+	DblCrLf          = CRLF + CRLF
+	SQLiteVacuum     = "VACUUM"
+	MySQLVacuum      = "SELECT 1"
+	SelectItems      = "SELECT id FROM %s"
+	InsertItems      = "INSERT INTO %s VALUES (?,?,?,?)"
+	SQLitePurgeItems = "DELETE FROM %s WHERE date(created_at, \"unixepoch\", \"localtime\") < date(\"now\", \"-%d days\")"
+	MySQLPurgeItems  = "DELETE FROM %s WHERE FROM_UNIXTIME(created_at) <= (NOW() - INTERVAL %d DAY)"
+)
 
-var PURGE_ITEMS string
-var VACUUM string
+var PurgeItems string
+var Vacuum string
 
 type DataRepository struct {
-	dbConfig   Database
-	purgeAfter uint
 	db         *sql.DB
-	reverse    bool
 	tbl_prefix string
+	dbConfig   Database
+	reverse    bool
+	purgeAfter uint
 }
 
 // Remove news items older than `purgeAfter` days
 func (repo *DataRepository) purgeOld() error {
-	purgeStmt := fmt.Sprintf(PURGE_ITEMS, repo.tbl_prefix+TABLE_NAME, repo.purgeAfter)
-	_, err := repo.db.Exec(purgeStmt)
-	if err != nil {
+	purgeStmt := fmt.Sprintf(PurgeItems, repo.tbl_prefix+TableName, repo.purgeAfter)
+
+	if _, err := repo.db.Exec(purgeStmt); err != nil {
 		return err
 	}
-	_, err = repo.db.Exec(VACUUM)
+
+	_, err := repo.db.Exec(Vacuum)
+
 	return err
 }
 
 // Open a database file and purge old news items from it
-func (repo *DataRepository) prepareDb() error {
+func (repo *DataRepository) prepareDB() error {
 	var err error
-	if repo.dbConfig.Driver == "sqlite3" {
+
+	switch repo.dbConfig.Driver {
+	case "sqlite3":
 		repo.db, err = sql.Open(repo.dbConfig.Driver, repo.dbConfig.Database)
-		PURGE_ITEMS = SQLITE_PURGE_ITEMS
-		VACUUM = SQLITE_VACUUM
-	} else if repo.dbConfig.Driver == "mysql" {
+		PurgeItems = SQLitePurgeItems
+		Vacuum = SQLiteVacuum
+	case "mysql":
 		repo.db, err = sql.Open(repo.dbConfig.Driver,
 			fmt.Sprintf("%s:%s@%s/%s", repo.dbConfig.Username,
 				repo.dbConfig.Password, repo.dbConfig.Address, repo.dbConfig.Database))
-		PURGE_ITEMS = MYSQL_PURGE_ITEMS
-		VACUUM = MYSQL_VACUUM
+		PurgeItems = MySQLPurgeItems
+		Vacuum = MySQLVacuum
+	default:
+		return fmt.Errorf("wrong repository driver")
 	}
+
 	if err != nil {
 		return err
 	}
-	_, err = repo.db.Exec(fmt.Sprintf(CREATE_TABLE, repo.tbl_prefix+TABLE_NAME))
-	if err != nil {
+
+	if _, err := repo.db.Exec(fmt.Sprintf(CreateTable, repo.tbl_prefix+TableName)); err != nil {
 		return err
 	}
-	err = repo.purgeOld()
-	if err != nil {
+
+	if err := repo.purgeOld(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
 // Entry point for initializing a database
-func (repo *DataRepository) Init() {
+func (repo *DataRepository) Init() error {
 	if repo.reverse {
 		repo.tbl_prefix = "reverse_"
 	}
-	err := repo.prepareDb()
-	if err != nil {
-		log.Fatal("PREPARE DB: ", err)
+
+	if err := repo.prepareDB(); err != nil {
+		return err
 	}
+
+	return nil
 }
 
 // Pull existing news items' IDs
 func (repo *DataRepository) GetExistingIDs() (map[int64]interface{}, error) {
-	existingIDs := make(map[int64]interface{}, 0)
-	rows, err := repo.db.Query(fmt.Sprintf(SELECT_ITEMS, repo.tbl_prefix+TABLE_NAME))
+	existingIDs := make(map[int64]interface{})
+	rows, err := repo.db.Query(fmt.Sprintf(SelectItems, repo.tbl_prefix+TableName))
+
 	if err != nil {
 		return existingIDs, err
 	}
+
 	defer rows.Close()
+
 	for rows.Next() {
-		var curId int64
-		err = rows.Scan(&curId)
-		if err != nil {
+		var curID int64
+
+		if err := rows.Scan(&curID); err != nil {
 			return existingIDs, err
 		}
-		existingIDs[curId] = 0
+
+		existingIDs[curID] = 0
 	}
+
 	return existingIDs, nil
 }
 
 // Add the provided news items to the database
-func (repo *DataRepository) UpdateItems(newItems []DigestItem) {
-	stmt, err := repo.db.Prepare(fmt.Sprintf(INSERT_ITEM, repo.tbl_prefix+TABLE_NAME))
+func (repo *DataRepository) UpdateItems(newItems *[]DigestItem) error {
+	stmt, err := repo.db.Prepare(fmt.Sprintf(InsertItems, repo.tbl_prefix+TableName))
+
 	if err != nil {
-		log.Fatal("PREPARE: ", err)
-	} else {
-		for _, newItem := range newItems {
-			_, err := stmt.Exec(newItem.id, newItem.createdAt, newItem.newsTitle, newItem.newsUrl)
-			if err != nil {
-				log.Fatal("INSERT: ", err)
-			}
+		return err
+	}
+
+	for _, newItem := range *newItems {
+		if _, err := stmt.Exec(newItem.id, newItem.createdAt, newItem.newsTitle, newItem.newsUrl); err != nil {
+			return err
 		}
 	}
+
+	return nil
 }
 
 // Close the database

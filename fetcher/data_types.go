@@ -10,17 +10,17 @@ type FilterItem struct {
 type PrefetchResults []int64
 
 type DigestItem struct {
-	id        int64
-	createdAt int64
 	newsTitle string
 	newsUrl   string
+	id        int64
+	createdAt int64
 }
 
 type JsonNewsItem struct {
-	Id    int64  `json:"id"`
-	Time  int64  `json:"time"`
 	Title string `json:"title,omitempty"`
 	Url   string `json:"url,omitempty"`
+	Id    int64  `json:"id"`
+	Time  int64  `json:"time"`
 }
 
 type Digest []DigestItem
@@ -28,8 +28,8 @@ type Digest []DigestItem
 type FetchError struct{}
 
 type Results struct {
-	NewItems uint
-	Filters  uint
+	NewItems int
+	Filters  int
 }
 
 // Constants
