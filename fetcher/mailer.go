@@ -54,13 +54,7 @@ func toBase64(input string) string {
 	return normalized
 }
 
-// Prepare and send an email with the list of the provided news items
-func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo, emailSubject string) {
-	if mailer.smtpConfig.Host == "" {
-		log.Println("SMTP Host is empty. Skipping sending the Email")
-		return
-	}
-
+func (mailer *DigestMailer) prepareMessage(digest *[]DigestItem, emailTo, emailSubject string) string {
 	headers := map[string]string{
 		"From":    mailer.smtpConfig.From,
 		"Subject": emailSubject,
@@ -91,6 +85,18 @@ func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo, emailSubjec
 		time.Now().Format(time.RFC1123Z), DblCrLf)))
 	messageBuilder.WriteString(CRLF)
 	messageBuilder.WriteString(BoundaryString)
+
+	return messageBuilder.String()
+}
+
+// Prepare and send an email with the list of the provided news items
+func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo, emailSubject string) {
+	msg := mailer.prepareMessage(digest, emailTo, emailSubject)
+
+	if mailer.smtpConfig.Host == "" {
+		log.Println("SMTP Host is empty. Skipping sending the Email")
+		return
+	}
 
 	c, err := smtp.Dial(fmt.Sprintf("%s:%d", mailer.smtpConfig.Host, mailer.smtpConfig.Port))
 	if err != nil {
@@ -124,7 +130,7 @@ func (mailer *DigestMailer) SendEmail(digest *[]DigestItem, emailTo, emailSubjec
 		log.Fatal("EMAIL_START_CONTENT: ", err)
 	}
 
-	_, err = fmt.Fprint(wc, messageBuilder.String())
+	_, err = fmt.Fprint(wc, msg)
 	if err != nil {
 		log.Fatal("EMAIL_SET_CONTENT: ", err)
 	}

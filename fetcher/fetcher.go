@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/exp/slices"
 )
 
 // Constants
@@ -124,7 +126,7 @@ func (f *Fetcher) filter(prefetched *[]int64) (*[]DigestItem, *[]DigestItem, err
 
 			newItems = append(newItems, digestItem)
 
-			if f.FilterItem(&newItem) {
+			if f.filterItem(&newItem) && f.filterBlacklisted(&newItem) {
 				digestItems = append(digestItems, digestItem)
 			}
 		}
@@ -133,13 +135,30 @@ func (f *Fetcher) filter(prefetched *[]int64) (*[]DigestItem, *[]DigestItem, err
 	return &newItems, &digestItems, nil
 }
 
+// Run a news item against the blacklisted domains
+func (f *Fetcher) filterBlacklisted(newItem *JsonNewsItem) bool {
+	if len(f.Settings.BlacklistedDomains) == 0 {
+		// No blackist - nothing to check
+		return true
+	}
+
+	parsedURL, err := url.Parse(newItem.Url)
+
+	if err != nil {
+		// Failed to parse the URL - not in the blacklist then
+		return true
+	}
+
+	return !slices.Contains(f.Settings.BlacklistedDomains, parsedURL.Host)
+}
+
 // Run a news item against all the configured filters
-func (f *Fetcher) FilterItem(newItem *JsonNewsItem) bool {
+func (f *Fetcher) filterItem(newItem *JsonNewsItem) bool {
 	if f.Reverse {
 		anyFilterHit := false
 
-		for _, filterItem := range f.filters {
-			if hit, _ := regexp.MatchString(RegexCaseInsensitive+filterItem, newItem.Title); hit {
+		for _, filter := range f.filters {
+			if hit, _ := regexp.MatchString(RegexCaseInsensitive+filter, newItem.Title); hit {
 				return false
 			}
 		}

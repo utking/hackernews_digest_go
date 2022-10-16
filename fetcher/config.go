@@ -24,12 +24,13 @@ type Database struct {
 }
 
 type Configuration struct {
-	ApiBaseUrl     string
-	EmailTo        string
-	Filters        []FilterItem
-	Database       Database
-	Smtp           SmtpConfig
-	PurgeAfterDays uint
+	ApiBaseUrl         string
+	EmailTo            string
+	Filters            []FilterItem
+	BlacklistedDomains []string
+	Database           Database
+	Smtp               SmtpConfig
+	PurgeAfterDays     uint
 }
 
 func GetConfig(filename string) (Configuration, error) {

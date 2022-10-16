@@ -12,3 +12,9 @@ func TestBodyToBase64(t *testing.T) {
 		t.Fatalf("\n%s\nIS NOT equal to \n%s\n", encoded, expected)
 	}
 }
+
+func TestSendMail(t *testing.T) {
+	mailer := DigestMailer{}
+	mailer.SendEmail(&[]DigestItem{
+		{id: 1, newsTitle: "t", newsUrl: "url", createdAt: 12312}}, "", "")
+}

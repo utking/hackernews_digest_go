@@ -46,6 +46,14 @@ func TestGetConfiguration(t *testing.T) {
 		t.Fatal("Filters list has no records")
 	}
 
+	if len(cfg.BlacklistedDomains) == 0 {
+		t.Fatal("BlacklistedDomains list has no records")
+	}
+
+	if cfg.BlacklistedDomains[0] != "www.businessinsider.com" {
+		t.Fatal("BlacklistedDomains list starts with an unexpected record")
+	}
+
 	if cfg.Filters[0].Title != "SQL" {
 		t.Fatalf("Filter title [%s] is wrong", cfg.Filters[0].Title)
 	}
