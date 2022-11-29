@@ -25,19 +25,6 @@ func TestPrepareRepositoryWrongDriver(t *testing.T) {
 	}
 }
 
-func TestRepositoryInit(t *testing.T) {
-	repo := DataRepository{dbConfig: Database{Driver: "sqlite3", Database: ":memory:"}}
-
-	repo.Init()
-	defer repo.Close()
-
-	items, _ := repo.GetExistingIDs()
-
-	if len(items) > 0 {
-		t.Errorf("Expected 0 IDs in the repository, %d exist", len(items))
-	}
-}
-
 func TestRepositoryUpdateItems(t *testing.T) {
 	repo := DataRepository{dbConfig: Database{Driver: "sqlite3", Database: ":memory:"}}
 
@@ -49,12 +36,6 @@ func TestRepositoryUpdateItems(t *testing.T) {
 
 	defer repo.Close()
 
-	items, _ := repo.GetExistingIDs()
-
-	if len(items) > 0 {
-		t.Errorf("Expected 0 IDs in the repository, %d exist", len(items))
-	}
-
 	digest := &[]DigestItem{
 		{id: 111, newsTitle: "Some Ititem", newsUrl: "http://localhost", createdAt: 123456789},
 	}
@@ -63,15 +44,15 @@ func TestRepositoryUpdateItems(t *testing.T) {
 		t.Errorf("Could not update the repository")
 	}
 
-	items, _ = repo.GetExistingIDs()
+	items, _ := repo.GetIDsToPull(&[]int64{112})
 
 	if len(items) != 1 {
-		t.Errorf("Expected 1 ID in the repository, %d exist", len(items))
+		t.Errorf("Expected 1 ID not in the repository, %d exist", len(items))
 	}
 
-	for id := range items {
-		if id != 111 {
-			t.Errorf("Expected ID to be %d, %d found", 111, id)
+	for _, id := range items {
+		if id != 112 {
+			t.Errorf("Expected ID to pull to be %d, %d found", 112, id)
 		}
 	}
 }

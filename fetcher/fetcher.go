@@ -88,19 +88,14 @@ func (f *Fetcher) filter(prefetched *[]int64) (*[]DigestItem, *[]DigestItem, err
 		digestItems []DigestItem
 	)
 
-	// Fetch existing items from the DB
-	existingIDs, err := f.repository.GetExistingIDs()
+	// Find items to pull
+	idsToPull, err := f.repository.GetIDsToPull(prefetched)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Fetch news items which do not exist in the DB
-	for _, fetchID := range *prefetched {
-		// Skipping old news
-		if _, ok := existingIDs[fetchID]; ok {
-			continue
-		}
-
+	for _, fetchID := range idsToPull {
 		// Fetch a new
 		newItem, err := f.fetchOne(fetchID)
 		if err != nil {

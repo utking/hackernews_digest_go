@@ -131,7 +131,8 @@ func TestPrepareFilters(t *testing.T) {
 }
 
 func TestPrefetch(t *testing.T) {
-	expected := "[33214439,33215770]"
+	const expected = "[33214439,33215770]"
+
 	fetcher := Fetcher{Settings: Configuration{ApiBaseUrl: ""}}
 
 	httpmock.Activate()
@@ -157,7 +158,8 @@ func TestPrefetch(t *testing.T) {
 }
 
 func TestFetchOne(t *testing.T) {
-	newsID := int64(33214439)
+	const newsID = int64(33214439)
+
 	expected := `{
 		"by": "endorphine",
 		"descendants": 1,
@@ -204,7 +206,8 @@ func TestFetchOne(t *testing.T) {
 }
 
 func TestFetchOneBroken(t *testing.T) {
-	newsID := int64(33214439)
+	const newsID = int64(33214439)
+
 	expected := `some-response`
 	fetcher := Fetcher{Settings: Configuration{ApiBaseUrl: ""}}
 
@@ -241,8 +244,11 @@ func TestVacuum(t *testing.T) {
 }
 
 func TestFilterItems(t *testing.T) {
-	expectedPrefetched := "[33214440,33215770,33215771]"
-	oldNewsItemID := int64(33214440)
+	const (
+		expectedPrefetched = "[33214440,33215770,33215771]"
+		oldNewsItemID      = int64(33214440)
+	)
+
 	expectedDigest := map[int64]string{
 		33214440: `{
 			"by": "author",
@@ -359,7 +365,8 @@ func TestFilterItems(t *testing.T) {
 }
 
 func TestBlacklistedDomains(t *testing.T) {
-	expectedPrefetched := "[33214440,33215770,33215771]"
+	const expectedPrefetched = "[33214440,33215770,33215771]"
+
 	expectedDigest := map[int64]string{
 		33214440: `{
 			"by": "author",
@@ -464,7 +471,8 @@ func TestBlacklistedDomains(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-	expectedPrefetched := "[33214440,33215770,33215771]"
+	const expectedPrefetched = "[33214440,33215770,33215771]"
+
 	expectedDigest := map[int64]string{
 		33214440: `{
 			"by": "author",

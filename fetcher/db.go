@@ -99,13 +99,33 @@ func (repo *DataRepository) Init() error {
 	return nil
 }
 
+func contains(list []int64, val int64) bool {
+	for _, v := range list {
+		if v == val {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Pull existing news items' IDs
-func (repo *DataRepository) GetExistingIDs() (map[int64]interface{}, error) {
-	existingIDs := make(map[int64]interface{})
-	rows, err := repo.db.Query(fmt.Sprintf(SelectItems, repo.tbl_prefix+TableName))
+func (repo *DataRepository) GetIDsToPull(prefetched *[]int64) ([]int64, error) {
+	var (
+		itemsToCheck []int64
+		existingIDs  []int64
+	)
+
+	args := make([]interface{}, 0, len(*prefetched))
+
+	for _, p := range *prefetched {
+		args = append(args, p)
+	}
+
+	rows, err := repo.db.Query(fmt.Sprintf(SelectItems+" WHERE id IN (?)", repo.tbl_prefix+TableName), args...)
 
 	if err != nil {
-		return existingIDs, err
+		return itemsToCheck, err
 	}
 
 	defer rows.Close()
@@ -114,13 +134,19 @@ func (repo *DataRepository) GetExistingIDs() (map[int64]interface{}, error) {
 		var curID int64
 
 		if err := rows.Scan(&curID); err != nil {
-			return existingIDs, err
+			return itemsToCheck, err
 		}
 
-		existingIDs[curID] = 0
+		existingIDs = append(existingIDs, curID)
 	}
 
-	return existingIDs, nil
+	for _, p := range *prefetched {
+		if !contains(existingIDs, p) {
+			itemsToCheck = append(itemsToCheck, p)
+		}
+	}
+
+	return itemsToCheck, nil
 }
 
 // Add the provided news items to the database
