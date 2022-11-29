@@ -12,6 +12,7 @@ require (
 
 require (
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/jmoiron/sqlx v1.3.5 // indirect
 	golang.org/x/exp v0.0.0-20221012211006-4de253d81b95 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
