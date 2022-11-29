@@ -1,7 +1,8 @@
 package fetcher
 
 import (
-	"database/sql"
+	"github.com/jmoiron/sqlx"
+
 	"fmt"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -32,7 +33,7 @@ var PurgeItems string
 var Vacuum string
 
 type DataRepository struct {
-	db         *sql.DB
+	db         *sqlx.DB
 	tbl_prefix string
 	dbConfig   Database
 	reverse    bool
@@ -58,11 +59,11 @@ func (repo *DataRepository) prepareDB() error {
 
 	switch repo.dbConfig.Driver {
 	case "sqlite3":
-		repo.db, err = sql.Open(repo.dbConfig.Driver, repo.dbConfig.Database)
+		repo.db, err = sqlx.Open(repo.dbConfig.Driver, repo.dbConfig.Database)
 		PurgeItems = SQLitePurgeItems
 		Vacuum = SQLiteVacuum
 	case "mysql":
-		repo.db, err = sql.Open(repo.dbConfig.Driver,
+		repo.db, err = sqlx.Open(repo.dbConfig.Driver,
 			fmt.Sprintf("%s:%s@%s/%s", repo.dbConfig.Username,
 				repo.dbConfig.Password, repo.dbConfig.Address, repo.dbConfig.Database))
 		PurgeItems = MySQLPurgeItems
@@ -116,13 +117,13 @@ func (repo *DataRepository) GetIDsToPull(prefetched *[]int64) ([]int64, error) {
 		existingIDs  []int64
 	)
 
-	args := make([]interface{}, 0, len(*prefetched))
+	query, args, err := sqlx.In(fmt.Sprintf(SelectItems+" WHERE id IN (?)", repo.tbl_prefix+TableName), *prefetched)
 
-	for _, p := range *prefetched {
-		args = append(args, p)
+	if err != nil {
+		return itemsToCheck, err
 	}
 
-	rows, err := repo.db.Query(fmt.Sprintf(SelectItems+" WHERE id IN (?)", repo.tbl_prefix+TableName), args...)
+	rows, err := repo.db.Query(query, args...)
 
 	if err != nil {
 		return itemsToCheck, err
