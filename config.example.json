@@ -43,5 +43,9 @@
     "Password": null,
     "UseTls": true,
     "UseSsl": false
+  },
+  "Telegram": {
+    "Token": "XXXXXXX:AABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRR",
+    "ChatId": "XXXXXXXXX"
   }
 }

@@ -182,6 +182,12 @@ func (f *Fetcher) SendEmail(digest *[]DigestItem) {
 	mailer.SendEmail(digest, f.Settings.EmailTo, f.Settings.Smtp.Subject+subjectPostfix)
 }
 
+// Send to Telegram from the provided news list and send it
+func (f *Fetcher) SendTelegram(digest *[]DigestItem) {
+	telegram := DigestTelegram{tgConfig: f.Settings.Telegram}
+	telegram.SendTelegram(digest, f.Settings.Telegram)
+}
+
 func (f *Fetcher) Vacuum() error {
 	// Vacuum is part of the SetUp phase; so run it and exit
 	if err := f.setUpRepository(); err != nil {
@@ -231,12 +237,15 @@ func (f *Fetcher) Run() (*Results, error) {
 	}
 
 	if len(*digest) > 0 {
-		if f.Settings.EmailTo != "" {
+		switch {
+		case f.Settings.Telegram.Token != "" && f.Settings.Telegram.ChatId != "":
+			f.SendTelegram(digest)
+		case f.Settings.EmailTo != "":
 			f.SendEmail(digest)
-		} else {
+		default:
 			// Print out to console
 			for _, digestItem := range *digest {
-				fmt.Printf("* %s - %s"+CRLF, digestItem.newsTitle, digestItem.newsUrl)
+				fmt.Printf("* %s - %s\n", digestItem.newsTitle, digestItem.newsUrl)
 			}
 		}
 	}
