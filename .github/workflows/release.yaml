@@ -27,4 +27,4 @@ jobs:
         overwrite: TRUE
         ldflags: "-s -w -extldflags=-static"
         binary_name: "hn_digest"
-        extra_files: config.example.json README.md
+        extra_files: config.example.json ReadMe.md
