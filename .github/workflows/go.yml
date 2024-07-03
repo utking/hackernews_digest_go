@@ -22,8 +22,5 @@ jobs:
         go-version: 1.22
     - name: Build
       run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -ldflags="-s -w -extldflags=-static"
-      with:
-        goos: ${{ matrix.goos }}
-        goarch: ${{ matrix.goarch }}
     - name: Test
       run: go test -v ./...
