@@ -15,6 +15,11 @@ type SmtpConfig struct {
 	UseSsl   bool
 }
 
+type TelegramConfig struct {
+	Token  string
+	ChatId string
+}
+
 type Database struct {
 	Driver   string
 	Database string
@@ -30,6 +35,7 @@ type Configuration struct {
 	BlacklistedDomains []string
 	Database           Database
 	Smtp               SmtpConfig
+	Telegram           TelegramConfig
 	PurgeAfterDays     uint
 }
 
