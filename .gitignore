@@ -13,3 +13,4 @@ hackernews_digest_go
 hacker_news_digest
 hackernews_db.sqlite
 .vscode
+/bin

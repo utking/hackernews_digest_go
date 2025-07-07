@@ -8,3 +8,21 @@ tar: build
 
 clean:
 	rm -vf bin/hn_digest *.tgz
+
+lint:
+	revive ./...
+
+install-lint:
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+
+lintci:
+	golangci-lint run
+
+update:
+	go get -u all
+
+install-revive:
+	go install github.com/mgechev/revive@latest
+
+test:
+	go test -cover -v ./...

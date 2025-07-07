@@ -1,6 +1,10 @@
 package fetcher
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestBodyToBase64(t *testing.T) {
 	body := "Some message that should be encoded to base64 and splitted to lines each shorter than 80 symbols"
@@ -15,6 +19,8 @@ func TestBodyToBase64(t *testing.T) {
 
 func TestSendMail(t *testing.T) {
 	mailer := DigestMailer{}
-	mailer.SendEmail(&[]DigestItem{
-		{id: 1, newsTitle: "t", newsUrl: "url", createdAt: 12312}}, "", "")
+	assert.NotPanics(t, func() {
+		mailer.SendEmail(&[]DigestItem{
+			{id: 1, newsTitle: "t", newsUrl: "url", createdAt: 12312}}, "", "")
+	}, "SendEmail should not panic with empty parameters")
 }

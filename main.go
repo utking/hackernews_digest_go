@@ -37,7 +37,7 @@ func main() {
 
 	if args.Vacuum {
 		fmt.Printf("Removing records older than %d days\n", config.PurgeAfterDays)
-		if err := fetcher.Vacuum(); err != nil {
+		if err = fetcher.Vacuum(); err != nil {
 			log.Fatalln(err)
 		}
 
